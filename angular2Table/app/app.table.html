@@ -1,0 +1,39 @@
+<div class="row">
+    <div class="col-xs-2">
+        <label for="file" class="form-control btn btn-primary">
+            upload file
+            <input type="file" name="file" id="file" style="visibility:hidden;" (change)="onChange($event)"/>
+        </label>
+    </div>
+    <div class="col-xs-3">
+        <input type="text" class="form-control" [(ngModel)]="filterText"/>
+    </div>
+</div>
+<div class="tableWrap">
+    <table *ngIf="jsonFile && jsonFile.length" class="table table-striped table-bordered table-sm">
+        <thead>
+        <tr>
+            <th *ngFor="let title of jsonFileTitle"
+                (click)="sorted(title)">
+                <div>
+                    <p>
+                        {{title}}
+                    </p>
+                    <i *ngIf="title !== nameOfTitle">&nbsp;</i>
+                    <i class="glyphicon"
+                       [ngClass]="{'glyphicon-chevron-up': sortedArr, 'glyphicon-chevron-down': !sortedArr}"
+                       *ngIf="title == nameOfTitle"></i>
+                </div>
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr *ngFor="let row of (jsonFile | rowsFilter:filterText | rowsSort:nameOfTitle:sortedArr)">
+            <td *ngFor="let title of jsonFileTitle">
+                {{row[title]}}
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+

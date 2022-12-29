@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>bizibox</title>
+    <meta name="author" content="Ido Aizenshtein"/>
+    <meta name="description" content="banks">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="style/style.css">
+    <link rel="icon"
+          type="image/png"
+          href="menuFrame/appBizibox.png">
+    <meta http-equiv='cache-control' content='no-cache'>
+    <meta http-equiv='expires' content='-1'>
+    <meta http-equiv='pragma' content='no-cache'>
+    <meta name="referrer" content="no-referrer">
+</head>
+
+<body style="-webkit-app-region: drag">
+<div id="Controls">
+    <div class="screen">
+        <img src="" id="imgTest">
+        <ul class="menu">
+            <li>
+                <div>
+                    Menu
+                </div>
+                <ul>
+                    <li onclick="funcNav('reload')">
+                        Reload Page
+                    </li>
+                    <li onclick="win.showDevTools();">
+                        Dev Tools
+                    </li>
+                    <li onclick="nw.App.clearCache();">
+                        Clear Cache
+                    </li>
+                    <li onclick="nw.App.quit();">
+                        Close App
+                    </li>
+                </ul>
+            </li>
+            <li>
+                <div onclick="funcNav('config')">
+                    Edit/Create config
+                </div>
+            </li>
+            <li>
+                <div onclick="funcNav('token')">
+                    Load token
+                </div>
+            </li>
+            <li>
+                <div onclick="funcNav('json')">
+                    Load json file
+                </div>
+            </li>
+            <li>
+                <div>
+                    Memory use:
+                    <div class="loaderMemory">
+                        <div id="progressBarMemory"></div>
+                    </div>
+                </div>
+            </li>
+        </ul>
+        <div id="passOtp">
+            <div>
+                <label for="otp">OTP</label>
+                <input type="text" id="otp">
+            </div>
+            <button id="sendOtp">
+                Send Otp
+            </button>
+            <button id="closeOtp">
+                Close
+            </button>
+        </div>
+        <div id="configEdit">
+            <div>
+                <label for="spiderId">spiderId</label>
+                <input type="text" id="spiderId">
+            </div>
+            <div>
+                <label for="sendToServer">sendToServer</label>
+                <input type="text" id="sendToServer">
+            </div>
+            <div>
+                <label for="time_to_send">time_to_send</label>
+                <input type="number" id="time_to_send" min="1" value="5">
+            </div>
+            <div>
+                <label for="Ppoalim">Ppoalim</label>
+                <input type="checkbox" id="Ppoalim">
+            </div>
+            <div>
+                <label for="Ppass">Ppass</label>
+                <input type="text" id="Ppass">
+            </div>
+            <div>
+                <label for="Ptarget_id">Ptarget_id</label>
+                <input type="text" id="Ptarget_id">
+            </div>
+            <div>
+                <label for="Ptoken">Ptoken</label>
+                <input type="text" id="Ptoken">
+            </div>
+            <div>
+                <label for="changeIp">changeIp</label>
+                <input type="checkbox" id="changeIp">
+            </div>
+            <div>
+                <label for="timeToChaneIp">timeToChaneIp</label>
+                <input type="number" id="timeToChaneIp" disabled>
+            </div>
+            <div>
+                <label for="runPoalimAsakimParallel">runPoalimAsakimParallel</label>
+                <input type="checkbox" id="runPoalimAsakimParallel">
+            </div>
+            <div class="dateField">
+                <div  style="width: auto;">
+                    <label for="poalimBizThreadNum">poalimBizThreadNum</label>
+                    <input type="number" id="poalimBizThreadNum" value="10">
+                </div>
+                <div style="margin-left: 20px;width: auto;">
+                    <label for="poalimBizCheckThreadNum">poalimBizCheckThreadNum</label>
+                    <input type="number" id="poalimBizCheckThreadNum" value="10">
+                </div>
+            </div>
+            <div class="dateField">
+                <div style="width: auto;">
+                    <label for="numOfAccForRenewLoginOsh">numOfAccForRenewLoginOsh</label>
+                    <input type="number" id="numOfAccForRenewLoginOsh" value="10" min="1">
+                </div>
+                <div style="margin-left: 20px;width: auto;">
+                    <label for="numOfAccForRenewLogin">numOfAccForRenewLoginChecks</label>
+                    <input type="number" id="numOfAccForRenewLogin" value="10" min="1">
+                </div>
+            </div>
+            <div class="dateField">
+                <div>
+                    <label for="numberOfOperationsCards">numberOfOperationsCards</label>
+                    <input type="number" id="numberOfOperationsCards" value="10">
+                </div>
+                <div style="margin-left: 20px;width: auto;">
+                    <label for="numOfAccForRenewLoginCards">numOfAccForRenewLoginCards</label>
+                    <input type="number" id="numOfAccForRenewLoginCards" value="10">
+                </div>
+            </div>
+            <div class="dateField">
+                <div>
+                    <label for="numberOfOperationsMatah">numberOfOperationsMatah</label>
+                    <input type="number" id="numberOfOperationsMatah" value="10">
+                </div>
+                <div style="margin-left: 20px;width: auto;">
+                    <label for="numOfAccForRenewLoginMatah">numOfAccForRenewLoginMatah</label>
+                    <input type="number" id="numOfAccForRenewLoginMatah" value="10">
+                </div>
+            </div>
+            <div class="dateField">
+                <div>
+                    <label for="numberOfOperationsNilvim">numberOfOperationsNilvim</label>
+                    <input type="number" id="numberOfOperationsNilvim" value="10">
+                </div>
+                <div style="margin-left: 20px;width: auto;">
+                <label for="numOfAccForRenewLoginNilvim">numOfAccForRenewLoginNilvim</label>
+                    <input type="number" id="numOfAccForRenewLoginNilvim" value="10">
+                </div>
+            </div>
+            <div>
+                <label for="isMizrahiJson">isMizrahiOld</label>
+                <input type="checkbox" id="isMizrahiJson">
+            </div>
+            <div>
+                <label for="IsLeumiSilukin">IsLeumiSilukin</label>
+                <input type="checkbox" id="IsLeumiSilukin">
+            </div>
+            <div>
+                <label for="IsGamaWithout_VPN_PROXY">IsGamaWithout_VPN</label>
+                <input type="checkbox" id="IsGamaWithout_VPN_PROXY">
+            </div>
+            <button id="configEditSend">
+                Edit/create
+            </button>
+            <button id="closeEditSend">
+                Close
+            </button>
+        </div>
+        <div id="senderToken">
+            <div id="tableOfMonthPop">
+                <i>x</i>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>
+                            שם הבנק
+                        </th>
+                        <th>
+                            מספר בנק
+                        </th>
+                        <th>
+                            כמות חודשים מקס׳
+                        </th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td>
+                            פועלים
+                        </td>
+                        <td>
+                            12
+                        </td>
+                        <td>
+                            6
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            פועלים בעסקים / OTP
+                        </td>
+                        <td>
+                            122/12
+                        </td>
+                        <td>
+                            2
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            ערבי ישראלי/לאומי/איגוד
+                        </td>
+                        <td>
+                            10/13/34
+                        </td>
+                        <td>
+                            2
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            מזרחי
+                        </td>
+                        <td>
+                            20
+                        </td>
+                        <td>
+                            5
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            יהב
+                        </td>
+                        <td>
+                            4
+                        </td>
+                        <td>
+                            1
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            הבינלאומי/מסד/פאגי/יובנק/אוצר החייל
+                        </td>
+                        <td>
+                            31/46/52/126/14
+                        </td>
+                        <td>
+                            7
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            דיסקונט רגיל/מרכנתיל רגיל
+                        </td>
+                        <td>
+                            11/17
+                        </td>
+                        <td>
+                            11
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            דיסקונט עסקים פלוס/מרכנתיל עסקים פלוס
+                        </td>
+                        <td>
+                            157/158
+                        </td>
+                        <td>
+                            11
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            דיסקונט עסקים/מרכנתיל עסקים
+                        </td>
+                        <td>
+                            57/58
+                        </td>
+                        <td>
+                            11
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            משפחת ישראכרט ואמריקן אקספרס
+                        </td>
+                        <td>
+                            22/23/25
+                        </td>
+                        <td>
+                            13
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            ויזה כאל
+                        </td>
+                        <td>
+                            21
+                        </td>
+                        <td>
+                            18
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            לאומי קארד
+                        </td>
+                        <td>
+                            24
+                        </td>
+                        <td>
+                            18
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="left">
+                <div>
+                    <label for="token">Token</label>
+                    <input type="text" id="token">
+                </div>
+                <div id="dateField" class="dateField">
+                    <label for="days">Days</label>
+                    <div>
+                        <input type="radio" name="dates" value="false" checked id="datesFalse">
+                        <input type="number" id="days" value="3">
+                    </div>
+                    <div>
+                        <input type="radio" name="dates" value="true" id="datesTrue">
+                        <input type="date" name="from" id="from">
+                        <input type="date" name="until" id="until">
+                    </div>
+                </div>
+                <div>
+                    <label for="checks">Checks</label>
+                    <input type="checkbox" id="checks" checked>
+                </div>
+                <div>
+                    <label for="ccardMonth">CcardMonth</label>
+                    <input type="number" id="ccardMonth" value="0">
+                    <span id="tableOfMonth">הצג טבלה</span>
+                    <label for="isCategory" class="isCategory">Category</label>
+                    <input type="checkbox" id="isCategory">
+                </div>
+                <div>
+                    <label for="IND_NILVIM">Ind_nilvim</label>
+                    <input type="checkbox" id="IND_NILVIM">
+                </div>
+                <div id="dateFieldMatah" class="dateField">
+                    <label for="daysMatah">Days matah</label>
+                    <div>
+                        <input type="radio" name="datesMatah" value="false" checked id="datesFalseMatah">
+                        <input type="number" id="daysMatah" value="0">
+                    </div>
+                    <div>
+                        <input type="radio" name="datesMatah" value="true" id="datesTrueMatah" disabled>
+                        <input type="date" name="fromMatah" id="fromMatah" disabled>
+                        <input type="date" name="untilMatah" id="untilMatah" disabled>
+                    </div>
+                </div>
+                <div>
+                    <label for="isPoalimAsakim">IsPoalimAsakim</label>
+                    <input type="checkbox" id="isPoalimAsakim">
+                    <label for="isOtp" class="isOtp">isOtp</label>
+                    <input type="checkbox" id="isOtp" disabled>
+                    <span class="otpChannelSelectors">
+                        <input type="radio" id="isOtpChannelSMS" name="otpChannel" value="SMS" checked>
+                        <label for="isOtpChannelSMS" class="">SMS</label>
+                        <input type="radio" class="" id="isOtpChannelVoice" name="otpChannel" value="VOICE">
+                        <label for="isOtpChannelVoice" class="">Voice message</label>
+                        <!--                        <input type="radio" class="" id="isOtpChannelPoalimPass" name="otpChannel" value="POALIM_PASS">
+                                                <label for="isOtpChannelPoalimPass" class="">Poalim Pass</label>-->
+                    </span>
+                </div>
+                <div id="dateFieldBranch">
+                    <label>Branch & Account & Sub account</label>
+                    <div>
+                        <input type="text" id="branch" placeholder="branch" disabled>
+                    </div>
+                    <div>
+                        <input type="text" id="account" placeholder="account" disabled>
+                    </div>
+                    <div>
+                        <input type="text" id="subAccount" placeholder="sub account" disabled>
+                    </div>
+                </div>
+<!--                 <div> -->
+<!--                     <label for="IsNewDateBankHadoar">IsNewDateBankHadoar</label> -->
+<!--                     <input type="checkbox" id="IsNewDateBankHadoar"> -->
+<!--                 </div> -->
+<!--                <div class="dateField">-->
+<!--                    <div style="width: auto;">-->
+<!--                    <label for="poalimBizThreadNum1">poalimBizThreadNum</label>-->
+<!--                        <input type="number" id="poalimBizThreadNum1" value="0">-->
+<!--                    </div>-->
+<!--                    <div style="margin-left: 20px;width: auto;">-->
+<!--                        <label for="poalimBizCheckThreadNum1">poalimBizCheckThreadNum</label>-->
+<!--                        <input type="number" id="poalimBizCheckThreadNum1" value="10">-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                <div class="dateField">-->
+<!--                    <div style="width: auto;">-->
+<!--                        <label for="numOfAccForRenewLoginOsh1">numOfAccForRenewLoginOsh</label>-->
+<!--                        <input type="number" id="numOfAccForRenewLoginOsh1" value="10">-->
+<!--                    </div>-->
+<!--                    <div style="margin-left: 20px;width: auto;">-->
+<!--                        <label for="numOfAccForRenewLogin1">numOfAccForRenewLoginChecks</label>-->
+<!--                        <input type="number" id="numOfAccForRenewLogin1" value="10" min="1">-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                <div class="dateField">-->
+<!--                    <div>-->
+<!--                        <label for="numberOfOperationsCards1">numberOfOperationsCards</label>-->
+<!--                        <input type="number" id="numberOfOperationsCards1" value="0">-->
+<!--                    </div>-->
+<!--                    <div style="margin-left: 20px;width: auto;">-->
+<!--                        <label for="numOfAccForRenewLoginCards1">numOfAccForRenewLoginCards</label>-->
+<!--                        <input type="number" id="numOfAccForRenewLoginCards1" value="10">-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                <div class="dateField">-->
+<!--                    <div>-->
+<!--                        <label for="numberOfOperationsMatah1">numberOfOperationsMatah</label>-->
+<!--                        <input type="number" id="numberOfOperationsMatah1" value="0">-->
+<!--                    </div>-->
+<!--                    <div style="margin-left: 20px;width: auto;">-->
+<!--                        <label for="numOfAccForRenewLoginMatah1">numOfAccForRenewLoginMatah</label>-->
+<!--                        <input type="number" id="numOfAccForRenewLoginMatah1" value="10">-->
+<!--                    </div>-->
+<!--                </div>-->
+<!--                <div class="dateField">-->
+<!--                    <div>-->
+<!--                        <label for="numOfAccForRenewLoginNilvim1">numOfAccForRenewLoginNilvim</label>-->
+<!--                        <input type="number" id="numOfAccForRenewLoginNilvim1" value="10" min="1">-->
+<!--                    </div>-->
+<!--                </div>-->
+
+                <!--                <div>
+                                    <label for="isAsakim">IsAsakim</label>
+                                    <input type="checkbox" id="isAsakim">
+                                </div>
+                                <div>
+                                    <label for="code">Code</label>
+                                    <input type="text" id="code" disabled="disabled">
+                                </div>-->
+                <div>
+                    <label for="openBankPage">OpenBankPage</label>
+                    <input type="checkbox" id="openBankPage">
+                </div>
+                <button id="sendLoad">
+                    Load
+                </button>
+                <button id="closeLoad">
+                    Close
+                </button>
+            </div>
+            <div class="right">
+                <img src="menuFrame/loader.gif" id="loader">
+
+                <nav>
+                    <div id="info" class="active">
+                        מידע כללי
+                    </div>
+                    <div id="accs">
+                        חשבונות
+                    </div>
+                    <div id="history">
+                        היסטוריה
+                    </div>
+                    <img src="menuFrame/recurring-appointment-xxl.png" id="recurring">
+                </nav>
+                <div class="dataBottom">
+                    <p class="pNot">
+                        לא נמצאו פרטים על הטוקן שהוזן
+                    </p>
+                    <ul id="infoUl">
+                        <li id="WEBSITE_TARGET_TYPE_ID">
+                            <img>
+                            <span></span>
+                        </li>
+                        <li id="WORK_SPIDER_ID">
+                            ספיידר אחרון שרץ:
+                            <span></span>
+                        </li>
+                        <li id="EXTRACTDATE">
+                            תאריך ריצה אחרון:
+                            <span></span>
+                        </li>
+                        <li id="ERRORDESC">
+                            תיאור:
+                            <span></span>
+                        </li>
+                        <li id="STATUS">
+                            סטטוס אחרון:
+                            <span></span>
+                        </li>
+                        <li id="WRNG_PSWRD_DATE">
+                            תאריך סיסמא שגויה:
+                            <span></span>
+                        </li>
+                        <li id="WRNG_PSWRD_TRIAL_COUNT">
+                            מספר נסיונות:
+                            <span></span>
+                        </li>
+                        <li id="COMPANY_NAME">
+                            שם חברה:
+                            <span></span>
+                        </li>
+                        <li id="DATE_CREATED">
+                            תאריך יצירה:
+                            <span></span>
+                        </li>
+                        <li id="IND_CHECKS_TO_S3">
+                            העלאת שיקים
+                            לS3:
+                            <span></span>
+                        </li>
+                    </ul>
+                    <ul id="accsUl">
+                    </ul>
+                    <ul id="historyUl">
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div id="outPut"></div>
+        <div id="logVersion"></div>
+        <div class="wrapBottomText">
+            <div id="version" class="subtext" onclick="funcNav('version')"></div>
+            <div id="loaded" class="subtext"></div>
+            <!--<label class="switch">-->
+            <!--<input type="checkbox" class="checkSwitch" onchange="funcNav('testVersion')">-->
+            <!--<div class="slider round"></div>-->
+            <!--</label>-->
+            <small id="dateUpload"></small>
+            <button class="devVer" onclick="downloadVer('DEV')" id="DEV">
+                <img src="menuFrame/icons8-installing-updates-50.png" width="10">
+                DEV
+            </button>
+            <button class="devVer" onclick="downloadVer('STG')" id="STG">
+                <img src="menuFrame/icons8-installing-updates-50.png" width="10">
+                STG
+            </button>
+            <button class="devVer" onclick="downloadVer('PROD')" id="PROD">
+                <img src="menuFrame/icons8-installing-updates-50.png" width="10">
+                PROD
+            </button>
+            <div class="copyright">
+                &copy; Developed By Ifact Ltd
+            </div>
+            <div class="loader">
+                <div id="progressBar"></div>
+            </div>
+        </div>
+        <iframe id="filecontainerlogin"
+                sandbox="allow-scripts allow-same-origin allow-forms"
+                src=""
+                style="width: 0px;height:0px; display: none;"
+                nwdisable nwfaketop>
+        </iframe>
+        <iframe id="filecontainerloginWithUpdatedUserAgent"
+                sandbox="allow-scripts allow-same-origin allow-forms"
+                src=""
+                style="display: none; width: 100%; height: 1142px;"
+                nwdisable nwfaketop
+                nwUserAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36">
+        </iframe>
+        <iframe id="filecontainerloginWithExplorerUserAgent"
+                sandbox="allow-scripts allow-same-origin allow-forms"
+                src=""
+                style="display: none; width: 100%; height: 1142px;"
+                nwdisable nwfaketop
+                nwUserAgent="Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko">
+        </iframe>
+    </div>
+</div>
+<canvas id="the-canvas" style="display: none;"></canvas>
+<script src="js/lib/pdf.js"></script>
+
+<!--lib jquery -->
+<script src="js/rsa/aes.js"></script>
+<script src="js/rsa/decodeBase64.js"></script>
+<script src="js/lib/rsaDiscount.js"></script>
+<script src="js/lib/jquery.min.js"></script>
+<script src="js/lib/jquery.jcryption.js"></script>
+
+<!-- core server -->
+<script src="js/monitor.js"></script>
+<script src="js/index.js"></script>
+<script src="js/proxy.js"></script>
+<!--<script src="js/testScoreAmazon.js"></script>-->
+
+<!-- core -->
+<script src="coreBank/var.js"></script>
+<script src="coreBank/services.js"></script>
+<script src="coreBank/main.js"></script>
+
+<!-- slika -->
+<script src="slika/yatzil.js"></script>
+<script src="slika/visa.js"></script>
+<script src="slika/isracardAsakim.js"></script>
+<script src="slika/gama.js"></script>
+<script src="slika/leumiCardSlika.js"></script>
+<script src="slika/tzameret.js"></script>
+<script src="slika/meshulam.js"></script>
+
+<!-- cards -->
+<script src="cards/visaCard.js"></script>
+<script src="cards/isracardCard.js"></script>
+<script src="cards/leumiCard.js"></script>
+
+<!-- banks -->
+<script src="banks/aibank.js"></script>
+<script src="banks/unionbank.js"></script>
+<script src="banks/bankjerusalem.js"></script>
+<script src="banks/discountAsakim.js"></script>
+<script src="banks/discuont.js"></script>
+<script src="banks/discuontAsakimPlus.js"></script>
+<script src="banks/fibi.js"></script>
+<script src="banks/hapoalim.js"></script>
+<script src="banks/mizrahiTefahot.js"></script>
+<script src="banks/yahav.js"></script>
+<script src="banks/poalimAsakim.js"></script>
+<script src="banks/poalimAsakimNew.js"></script>
+<script src="banks/postDoar.js"></script>
+
+<!-- start -->
+<script src="coreBank/start.js"></script>
+</body>
+</html>

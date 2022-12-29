@@ -1,0 +1,35 @@
+/* Master Styles */
+h1 {
+    color: #369;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 250%;
+}
+
+h2, h3 {
+    color: #444;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: lighter;
+}
+
+body {
+    margin: 2em;
+}
+
+th > div {
+    overflow: hidden;
+}
+
+th > div:after {
+    margin-right: 20px;
+}
+
+th > div > p {
+    float: left;
+}
+
+th > div > i {
+    float: left;
+    width: 18px;
+    height: 18px;
+    display: block !important;
+}

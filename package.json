@@ -1,0 +1,132 @@
+{
+	"name": "nwBizibox",
+	"version": "0.6.13",
+	"versionDownloadFull": false,
+	"versionTest": false,
+	"versionKind": "DEV",
+	"dateUpload": "21/03/2020, 10:22:02",
+	"main": "index.html",
+	"description": "bizibox",
+	"keywords": [
+		"bizibox banks spider"
+	],
+	"author": "Ido Aizenshtein <idoaizenshtein@gmail.com>",
+	"license": "MIT",
+	"window": {
+		"show": true,
+		"frame": true,
+		"toolbar": true,
+		"position": "center",
+		"icon": "menuFrame/appBizibox.png",
+		"width": 990,
+		"height": 565,
+		"resizable": true,
+		"show_in_taskbar": true
+	},
+	"node-remote": "https://secure.bizibox.biz/",
+	"nodejs": true,
+	"chromium-args": "--no-referrers --disable-web-security --ignore-certificate-errors --disable-raf-throttling --disable-extensions-http-throttling --disk-cache-size=1 --media-cache-size=1",
+	"visible-on-all-workspaces": true,
+	"single-instance": false,
+	"manifestTestUrl": "https://deployment.bizibox.biz/spider2/nwBizibox/tests/package.json",
+	"manifestUrl": "https://deployment.bizibox.biz/spider2/nwBizibox/package.json",
+	"packages": {
+		"mac": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/nwBizibox.dmg?raw=true"
+		},
+		"win": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/win32/nwBizibox.zip"
+		},
+		"win32": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/win32/nwBizibox.zip"
+		},
+		"win64": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/win64/nwBizibox.zip"
+		},
+		"linux32": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/linux32/nwBizibox.tar.gz"
+		},
+		"linux64": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/linux64/nwBizibox.tar.gz"
+		}
+	},
+	"packagesFiles": {
+		"mac": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/downloadFiles.dmg?raw=true"
+		},
+		"win": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/downloadFiles.zip"
+		},
+		"linux32": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/downloadFiles.tar.gz"
+		},
+		"linux64": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/downloadFiles.tar.gz"
+		}
+	},
+	"packagesFilesTests": {
+		"mac": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/tests/downloadFiles.dmg?raw=true"
+		},
+		"win": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/tests/downloadFiles.zip"
+		},
+		"linux32": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/tests/downloadFiles.tar.gz"
+		},
+		"linux64": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/tests/downloadFiles.tar.gz"
+		}
+	},
+	"packagesFilesDev": {
+		"mac": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/dev/downloadFiles.dmg?raw=true"
+		},
+		"win": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/dev/downloadFiles.zip"
+		},
+		"linux32": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/dev/downloadFiles.tar.gz"
+		},
+		"linux64": {
+			"url": "https://deployment.bizibox.biz/spider2/nwBizibox/dev/downloadFiles.tar.gz"
+		}
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://idoaizenshteinBizibox@bitbucket.org/idoaizenshteinbiziboz/webkitbanks.git"
+	},
+	"homepage": "https://secure.bizibox.biz",
+	"scripts": {
+		"start": "nw ."
+	},
+	"webkit": {
+		"plugin": true,
+		"page-cache": false
+	},
+	"dependencies": {
+		"del": "^4.1.1",
+		"fs-path": "0.0.24",
+		"gulp-bump": "^2.8.0",
+		"iconv-lite": "^0.4.17",
+		"ncp": "^0.5.1",
+		"request": "^2.88.0",
+		"request-promise": "^4.2.4",
+		"rimraf": "^2.5.0",
+		"semver": "^6.1.1",
+		"tar.gz": "^0.1.1",
+		"vinyl-ftp": "^0.6.0"
+	},
+	"devDependencies": {
+		"gulp": "^3.9.1",
+		"gulp-cache": "^1.1.2",
+		"gulp-clean": "^0.4.0",
+		"gulp-gzip": "^1.4.2",
+		"gulp-json-editor": "^2.2.1",
+		"gulp-sftp": "^0.1.5",
+		"gulp-tar": "^2.1.0",
+		"gulp-util": "^3.0.8",
+		"gulp-zip": "^4.0.0",
+		"nw-builder": "^3.5.7"
+	}
+}

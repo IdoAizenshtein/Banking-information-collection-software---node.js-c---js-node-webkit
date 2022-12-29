@@ -1,0 +1,26 @@
+{
+  "name": "Bank Hapoalim Biz",
+  "background": {
+    "persistent": false,
+    "scripts": ["background.js"]
+  },
+  "description": "Bank Hapoalim Biz",
+  "externally_connectable": {
+    "matches": [
+      "*://*.bankhapoalim.co.il/*",
+      "*://*.bankhapoalim.biz/*"
+    ]
+  },
+  "homepage_url": "https://www.bankhapoalim.biz/",
+  "key": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDFGlDEMlhbfkXgUr59dF5Z88XFi+DDf6P7R5lyJjUVt+ai//+ZAopq0b4Di5sBvh970Wch2dC8pMJc9vGpP6kyUv/iz2+gICarZfBjZ/Uvs76r9l+YNivJPDsj4bnJAA6Sk545qOMfe4rAMOKsswMffiMg9JjnvzAwn0rT1mK5kQIDAQAB",
+  "manifest_version": 2,
+  "permissions": [
+    "nativeMessaging",
+    "chrome-extension://*",
+    "file:///*",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "update_url": "https://clients2.google.com/service/update2/crx",
+  "version": "2.0.0.0"
+}
