@@ -85,7 +85,7 @@ function setProxy() {
                     },
                     function () {
                         setTimeout(() => {
-                            $.get("https://icanhazip.com").then(rr => {
+                            $.get("https://lumtest.com/myip").then(rr => {
                                 writeLog('--- success proxy connection----' + rr.replace(/\s/g, ""));
                                 resolve(true);
                             }).fail(() => {
@@ -104,7 +104,7 @@ function setProxy() {
             }
 
             writeLog('--- Try to get real IP for add to whitelist----');
-            $.get("https://icanhazip.com")
+            $.get("https://lumtest.com/myip")
                 .done(function (ipAddrress) {
                     writeLog('--- Real IP: ' + ipAddrress + '----');
 

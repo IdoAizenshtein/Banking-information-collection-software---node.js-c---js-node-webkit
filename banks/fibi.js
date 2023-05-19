@@ -9,7 +9,7 @@ all.banks.accounts.fibi = function () {
         }
         fibi.timeToTry += 1;
         writeLog("---- Start ChangeIp----");
-        all.banks.core.main.changeIpV4(true).then(function (res) {
+        all.banks.core.main.changeIpV4('israel').then(function (res) {
             setTimeout(() => {
                 if (changeInMiddle == undefined) {
                     fibi.login();

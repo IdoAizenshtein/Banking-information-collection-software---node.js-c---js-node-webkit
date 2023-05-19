@@ -15,7 +15,6 @@
     <meta http-equiv='pragma' content='no-cache'>
     <meta name="referrer" content="no-referrer">
 </head>
-
 <body style="-webkit-app-region: drag">
 <div id="Controls">
     <div class="screen">
@@ -388,6 +387,8 @@
                     <input type="checkbox" id="isPoalimAsakim">
                     <label for="isOtp" class="isOtp">isOtp</label>
                     <input type="checkbox" id="isOtp" disabled>
+	                <label for="isGetAccFromServer" class="isGetAccFromServer">FromServer</label>
+	                <input type="checkbox" id="isGetAccFromServer" disabled>
                     <span class="otpChannelSelectors">
                         <input type="radio" id="isOtpChannelSMS" name="otpChannel" value="SMS" checked>
                         <label for="isOtpChannelSMS" class="">SMS</label>
@@ -578,20 +579,20 @@
             </div>
         </div>
         <iframe id="filecontainerlogin"
-                sandbox="allow-scripts allow-same-origin allow-forms"
+                sandbox="allow-same-origin allow-forms"
                 src=""
                 style="width: 0px;height:0px; display: none;"
                 nwdisable nwfaketop>
         </iframe>
         <iframe id="filecontainerloginWithUpdatedUserAgent"
-                sandbox="allow-scripts allow-same-origin allow-forms"
+                sandbox="allow-same-origin allow-forms"
                 src=""
                 style="display: none; width: 100%; height: 1142px;"
                 nwdisable nwfaketop
                 nwUserAgent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36">
         </iframe>
         <iframe id="filecontainerloginWithExplorerUserAgent"
-                sandbox="allow-scripts allow-same-origin allow-forms"
+                sandbox="allow-same-origin allow-forms"
                 src=""
                 style="display: none; width: 100%; height: 1142px;"
                 nwdisable nwfaketop

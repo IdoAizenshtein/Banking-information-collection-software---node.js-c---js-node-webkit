@@ -3538,10 +3538,11 @@ all.banks.accounts.aibank = function () {
                                 });
 
                             function resReq(err, body) {
+                                ///תוצאה של 1111
                                 if (err) {
                                     console.log("err resReq - loadAllDataChecks");
                                     var dateFrom = ("0" + (new Date().getDate())).slice(-2) + '/' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '/' + new Date().getFullYear().toString().slice(-2);
-                                    var dateToFormat = new Date(new Date().getFullYear() + 7, 11, 31);
+                                    var dateToFormat = new Date(new Date().getFullYear() + 5, 11, 31);
                                     var dateTo = ("0" + (dateToFormat.getDate())).slice(-2) + '/' + ("0" + (dateToFormat.getMonth() + 1)).slice(-2) + '/' + dateToFormat.getFullYear().toString().slice(-2);
                                     jsons["dtFromDate$textBox"] = dateFrom;
                                     jsons["dtToDate$textBox"] = dateTo;
@@ -3550,7 +3551,7 @@ all.banks.accounts.aibank = function () {
                                     if (body == undefined) {
                                         console.log("body empty - loadAllDataChecks");
                                         var dateFrom = ("0" + (new Date().getDate())).slice(-2) + '/' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '/' + new Date().getFullYear().toString().slice(-2);
-                                        var dateToFormat = new Date(new Date().getFullYear() + 7, 11, 31);
+                                        var dateToFormat = new Date(new Date().getFullYear() + 5, 11, 31);
                                         var dateTo = ("0" + (dateToFormat.getDate())).slice(-2) + '/' + ("0" + (dateToFormat.getMonth() + 1)).slice(-2) + '/' + dateToFormat.getFullYear().toString().slice(-2);
                                         jsons["dtFromDate$textBox"] = dateFrom;
                                         jsons["dtToDate$textBox"] = dateTo;
@@ -3560,7 +3561,7 @@ all.banks.accounts.aibank = function () {
                                         var data = all.banks.core.services.parseHtml(body);
                                         res = null;
                                         var dateFrom = ("0" + (new Date().getDate())).slice(-2) + '/' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '/' + new Date().getFullYear().toString().slice(-2);
-                                        var dateToFormat = new Date(new Date().getFullYear() + 7, 11, 31);
+                                        var dateToFormat = new Date(new Date().getFullYear() + 5, 11, 31);
                                         var dateTo = ("0" + (dateToFormat.getDate())).slice(-2) + '/' + ("0" + (dateToFormat.getMonth() + 1)).slice(-2) + '/' + dateToFormat.getFullYear().toString().slice(-2);
                                         jsons = {
                                             "__EVENTTARGET": "",
@@ -3597,6 +3598,40 @@ all.banks.accounts.aibank = function () {
                                             "hPaidOrUnPaidTotalCheckSum": $(data).find('#hPaidOrUnPaidTotalCheckSum').val(),
                                             "txtSearchValue": "חפש"
                                         };
+                                        var countDueChechs = data.find('#ctlPaidOrUnPaidChecks tr').not('.header, .footer').length;
+                                        if (countDueChechs) {
+                                            // var arr = [];
+                                            $(data).find('#ctlPaidOrUnPaidChecks tr').not('.header, .footer').each(function (i, v) {
+                                                var deBank = $(v).find("td").eq(5).text().replace(/\s/g, "").split("-");
+                                                var depositeDate = $(v).find("td").eq(3).text();
+                                                var dueDate = $(v).find("td").eq(4).text();
+                                                depositeDate = aibank.convertDateLocal(depositeDate);
+                                                dueDate = aibank.convertDateLocal(dueDate);
+
+                                                all.banks.generalVariables.allDataArrDueChecks.push({
+                                                    "TargetId": all.banks.accountDetails.bank.targetId,
+                                                    "Token": all.banks.accountDetails.bank.token,
+                                                    "BankNumber": parseInt(all.banks.accountDetails.bank.BankNumber),
+                                                    "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
+                                                    "ExporterId": all.banks.spiderConfig.spiderId,
+                                                    "AccountNumber": acc.AccountNumber,
+                                                    "BranchNumber": acc.BranchNumber,
+                                                    "CheckNumber": $(v).find("td").eq(0).text(),
+                                                    "CheckDescription": $(v).find("td").eq(2).text().replace(/\n/g, "").replace(/\t/g, ""),
+                                                    "DepositeDate": all.banks.core.services.convertDateAll(depositeDate),
+                                                    "DueDate": all.banks.core.services.convertDateAll(dueDate),
+                                                    "CheckTotal": parseFloat($(v).find("td").eq(6).text().replace(/\s/g, "").replace(/,/g, '')),
+                                                    "CheckBankNumber": deBank[0],
+                                                    "CheckAccountNumber": deBank[2],
+                                                    "CheckBranchNumber": deBank[1]
+                                                });
+                                            })
+                                            loadChecks2(jsons);
+                                        } else {
+                                            loadChecks2(jsons);
+                                        }
+
+
 //									var countDueChechs = data.find('#ctlPaidOrUnPaidChecks tbody tr').not('.header, .footer').length;
 //									if (countDueChechs) {
 //										var arr = [];
@@ -3630,7 +3665,7 @@ all.banks.accounts.aibank = function () {
 //										})
 //									}
 //									else {
-                                        loadChecks2(jsons);
+
 //									}
                                     }
                                 }
@@ -3649,6 +3684,7 @@ all.banks.accounts.aibank = function () {
                                     });
 
                                 function resReq2(err, body) {
+                                    ///תוצאה של 22222
                                     if (err) {
                                         console.log("err resReq - loadChecks2");
                                         if ((res.find("#ddlAccounts_m_ddl option").length - 1) > indDDAcc) {
@@ -3670,10 +3706,9 @@ all.banks.accounts.aibank = function () {
                                             console.log("body resReq - loadChecks2");
                                             var data = all.banks.core.services.parseHtml(body);
                                             res = null;
-
-                                            if (data.find('#ctlPaidOrUnPaidChecks tbody tr').not('.header, .footer').length) {
-                                                var countDueChechs = data.find('#ctlPaidOrUnPaidChecks tbody tr').not('.header, .footer').length;
-                                                $(data).find('#ctlPaidOrUnPaidChecks tbody tr').not('.header, .footer').each(function (i, v) {
+                                            if (data.find('#ctlPaidOrUnPaidChecks tr').not('.header, .footer').length) {
+                                                var countDueChechs = data.find('#ctlPaidOrUnPaidChecks tr').not('.header, .footer').length;
+                                                $(data).find('#ctlPaidOrUnPaidChecks tr').not('.header, .footer').each(function (i, v) {
                                                     var deBank = $(v).find("td").eq(5).text().replace(/\s/g, "").split("-");
                                                     var depositeDate = $(v).find("td").eq(3).text();
                                                     var dueDate = $(v).find("td").eq(4).text();
@@ -3723,7 +3758,6 @@ all.banks.accounts.aibank = function () {
                         }
                     })
                 }
-                ;
             })
             .fail(function (error, resErr, urlParam) {
                 var logErr = "restUrl: " + urlParam + ", status: " + error.status;
@@ -5293,6 +5327,87 @@ all.banks.accounts.aibank = function () {
     };
     aibank.timesToTry = 0;
     aibank.loadOshNew = async function () {
+        function k_combinations(set, k) {
+            var i, j, combs, head, tailcombs;
+            if (k > set.length || k <= 0) {
+                return [];
+            }
+
+            if (k == set.length) {
+                return [set];
+            }
+            if (k == 1) {
+                combs = [];
+                for (i = 0; i < set.length; i++) {
+                    combs.push([set[i]]);
+                }
+                return combs;
+            }
+            combs = [];
+            for (i = 0; i < set.length - k + 1; i++) {
+                head = set.slice(i, i + 1);
+                tailcombs = k_combinations(set.slice(i + 1), k - 1);
+                for (j = 0; j < tailcombs.length; j++) {
+                    combs.push(head.concat(tailcombs[j]));
+                }
+            }
+            return combs;
+        }
+
+        function combinations(set) {
+            var k, i, combs, k_combs;
+            combs = [];
+
+            for (k = 1; k <= set.length; k++) {
+                k_combs = k_combinations(set, k);
+                for (i = 0; i < k_combs.length; i++) {
+                    combs.push(k_combs[i]);
+                }
+            }
+            return combs;
+        }
+
+        function subsetSum(items, target) {
+            const input = items.map(() => 0);
+            let retVal = null;
+            let algortihmResponse = subsetSumBacktrack(items, input, target, 0, 0);
+            if (!algortihmResponse) {
+                retVal = null;
+            } else {
+                retVal = items.filter((element, index) => algortihmResponse[index] === 1);
+            }
+            algortihmResponse = null;
+            return retVal;
+        }
+
+        function subsetSumBacktrack(items, response, target, partialSum, totalCheckedElements) {
+            // Here, we compute the maximum number our partialSum could achieve after adding all the remaining elements
+            const totalPossibleSum = items
+                .slice(totalCheckedElements)
+                .reduce((a, b) => a + b, 0);
+
+            // If we've reached our target, just return our response
+            if (partialSum == target) {
+                return response;
+                //  If we've passed our target, just return null. There's no need to continue
+            } else if (partialSum > target) {
+                return null;
+                // If even after summing all the remaining elements we won't reach our target, just return null. There's no need to continue
+            } else if (partialSum + totalPossibleSum < target) {
+                return null;
+            } else {
+                // Here comes the magic in it. Here we check the next number that will either sum to a number smaller than our target or even, if we are lucky enough, reach the target;
+                for (const v of [1, 0]) {
+                    response[totalCheckedElements] = v;
+                    const x = subsetSumBacktrack(items, response, target, partialSum + response[totalCheckedElements] * items[totalCheckedElements], totalCheckedElements + 1);
+                    if (x != null) {
+                        return x;
+                    }
+                }
+                return null;
+            }
+        }
+
         aibank.timesToTry += 1;
         await aibank.synchronizeCookieSets();
 
@@ -5427,6 +5542,66 @@ all.banks.accounts.aibank = function () {
                 account['Balance'] = jsonAccountTransactions.BalanceDisplay;
                 account['AccountCredit'] = jsonAccountTransactions.TotalCredit;
 
+                let isSalariesExist = false;
+                const ctlOrdersTableJson = [];
+                if (Array.isArray(jsonAccountTransactions.HistoryTransactionsItems)) {
+                    isSalariesExist = jsonAccountTransactions.HistoryTransactionsItems.some(it => it.Description === "העברת משכ700");
+                }
+                if (Array.isArray(jsonAccountTransactions.TodayTransactionsItems)) {
+                    if (!isSalariesExist) {
+                        isSalariesExist = jsonAccountTransactions.TodayTransactionsItems.some(it => it.Description === "העברת משכ700");
+                    }
+                }
+                if (isSalariesExist) {
+                    let resPage = await all.banks.core.services.httpReq(
+                        "https://" + all.banks.accounts.aibank.urlServices + "/ebanking/Corporate/Approvals/OrdersSearch.aspx?from=Corporate.ACH", 'GET', null, false, false);
+                    let dataRes = all.banks.core.services.parseHtml(resPage);
+                    let serializeForm = dataRes.find("form").serializeArray();
+                    let obj = {};
+                    serializeForm.forEach((vals) => {
+                        obj[vals.name] = vals.value;
+                    });
+                    obj["Search"] = 'rbGeneralSearch';
+                    obj["ddlOperationType"] = '3880PayrollTransfer';
+                    obj["DES_JSE"] = '1';
+                    obj["dtFromDate$textBox"] = '';
+                    obj["dtToDate$textBox"] = '';
+                    obj["btnShow.x"] = '14';
+                    obj["btnShow.y"] = '10';
+                    resPage = await all.banks.core.services.httpReq("https://" + all.banks.accounts.aibank.urlServices + "/ebanking/Corporate/Approvals/OrdersSearch.aspx?from=Corporate.ACH", 'POST', obj, true, false)
+                    dataRes = all.banks.core.services.parseHtml(resPage);
+                    const ctlOrdersTable = dataRes.find('#ctlOrders tr:not(.header)');
+
+                    ctlOrdersTable.each((idx, child) => {
+                        ctlOrdersTableJson.push({
+                            DepositeTransferDate: $(child).children('td').eq(0).text(),
+                            TransferTotal: Number($(child).children('td').eq(7).text().replace(/[^\d\.-]/g, "")),
+                            Asmachta: $(child).children('td').eq(1).text(),
+                            link: "https://" + all.banks.accounts.aibank.urlServices + $(child).find('#operationNum').attr("href")
+                        });
+                    });
+                    for (let idxLink = 0; idxLink < ctlOrdersTableJson.length; idxLink++) {
+                        let resPage = await all.banks.core.services.httpReq(ctlOrdersTableJson[idxLink].link, 'GET', null, false, false);
+                        dataRes = all.banks.core.services.parseHtml(resPage);
+                        delete ctlOrdersTableJson[idxLink]['link'];
+                        const beneficiariesListGrid = dataRes.find('.PopupBeneficiariesListGrid tr:not(.header)');
+                        ctlOrdersTableJson[idxLink]['DepositeTransferData'] = [];
+                        beneficiariesListGrid.each((idx, child) => {
+                            const accountAndBranch = $(child).children('td').eq(3).text().split('-');
+                            ctlOrdersTableJson[idxLink]['DepositeTransferData'].push({
+                                "NamePayerTransfer": $(child).children('td').eq(0).text(),
+                                "DepositeTransferDate": null,
+                                "DetailsTransfer": null,
+                                "TransferTotal": Number($(child).children('td').eq(4).text().replace(/[^\d\.-]/g, "")),
+                                "BankTransferNumber": all.banks.core.services.getTypeBank($(child).children('td').eq(2).text()),
+                                "BranchTransferNumber": parseFloat(accountAndBranch[0]),
+                                "AccountTransferNumber": parseFloat(accountAndBranch[1])
+                            });
+                        });
+                    }
+                    // console.log(ctlOrdersTableJson)
+                }
+
                 if (Array.isArray(jsonAccountTransactions.HistoryTransactionsItems)) {
                     const performReverse = Array.isArray(jsonAccountTransactions.UserPreferenceItems)
                         && jsonAccountTransactions.UserPreferenceItems.length
@@ -5437,6 +5612,10 @@ all.banks.accounts.aibank = function () {
                             ? jsonAccountTransactions.HistoryTransactionsItems[0].RunningBalance
                             : jsonAccountTransactions.HistoryTransactionsItems[jsonAccountTransactions.HistoryTransactionsItems.length - 1].RunningBalance;
                     }
+
+                    isSalariesExist = jsonAccountTransactions.HistoryTransactionsItems.filter(it => it.Description === "העברת משכ700");
+
+                    console.log('jsonAccountTransactions.HistoryTransactionsItems', jsonAccountTransactions.HistoryTransactionsItems)
                     for (const tr of (performReverse ? jsonAccountTransactions.HistoryTransactionsItems.reverse()
                         : jsonAccountTransactions.HistoryTransactionsItems)) {
                         account.DataRow.push(Object.assign(await processTransaction(tr), {
@@ -5445,16 +5624,175 @@ all.banks.accounts.aibank = function () {
                     }
                 }
                 if (Array.isArray(jsonAccountTransactions.TodayTransactionsItems)) {
+                    console.log('jsonAccountTransactions.TodayTransactionsItems', jsonAccountTransactions.TodayTransactionsItems)
                     for (const tr of jsonAccountTransactions.TodayTransactionsItems) {
                         account.DataRow.push(Object.assign(await processTransaction(tr), {
                             "IsDaily": "1"
                         }));
                     }
                 }
-
                 return true;
 
                 async function processTransaction(trx) {
+                    try {
+                        if (isSalariesExist && trx.Description === "העברת משכ700"
+                            && ctlOrdersTableJson.length) {
+                            let dateToFormat = new Date(trx.DateUTC);
+                            const dateAfterFormat = ("0" + (dateToFormat.getDate())).slice(-2) + '/' + ("0" + (dateToFormat.getMonth() + 1)).slice(-2) + '/' + dateToFormat.getFullYear();
+                            dateToFormat.setDate(dateToFormat.getDate() + 1);
+                            const dateAfterFormatPlusDay = ("0" + (dateToFormat.getDate())).slice(-2) + '/' + ("0" + (dateToFormat.getMonth() + 1)).slice(-2) + '/' + dateToFormat.getFullYear();
+
+                            const total = (trx.TransactionSign === true ? trx.Credit : trx.Debit);
+                            const Asmachta = trx.ReferenceNumberLong.toString();
+                            const foundAsmachta = ctlOrdersTableJson.find(it =>
+                                it.Asmachta === Asmachta &&
+                                it.TransferTotal === total && (
+                                    it.DepositeTransferDate === dateAfterFormat
+                                    ||
+                                    it.DepositeTransferDate === dateAfterFormatPlusDay
+                                ))
+                            if (foundAsmachta) {
+                                foundAsmachta.DepositeTransferData.forEach((item) => {
+                                    item.DepositeTransferDate = all.banks.core.services.convertDateAll(trx.DateUTC);
+                                })
+                                return {
+                                    "Asmachta": trx.ReferenceNumberLong,
+                                    "TransDesc": trx.Description,
+                                    "ValueDate": all.banks.core.services.convertDateAll(trx.DateUTC),
+                                    "TransactionType": trx.TransactionSign === true ? 1 : 0,
+                                    "TransTotal": total,
+                                    "Balance": trx.RunningBalance,
+                                    "imgs": null,
+                                    "DepositeTransferData": foundAsmachta.DepositeTransferData
+                                };
+                            } else {
+                                let foundAsmachtaOnly = ctlOrdersTableJson.find(it =>
+                                    it.Asmachta === Asmachta && (
+                                        it.DepositeTransferDate === dateAfterFormat
+                                        ||
+                                        it.DepositeTransferDate === dateAfterFormatPlusDay
+                                    ))
+                                if (foundAsmachtaOnly && foundAsmachtaOnly.length === 1) {
+                                    const foundMatch = foundAsmachtaOnly[0].DepositeTransferData.find(it => it.TransferTotal === total);
+                                    if (foundMatch) {
+                                        foundAsmachtaOnly = JSON.parse(JSON.stringify(foundAsmachtaOnly[0]));
+                                        foundAsmachtaOnly.DepositeTransferData = [foundMatch]
+                                        foundAsmachtaOnly.DepositeTransferData.forEach((item) => {
+                                            item.DepositeTransferDate = all.banks.core.services.convertDateAll(trx.DateUTC);
+                                        })
+                                        return {
+                                            "Asmachta": trx.ReferenceNumberLong,
+                                            "TransDesc": trx.Description,
+                                            "ValueDate": all.banks.core.services.convertDateAll(trx.DateUTC),
+                                            "TransactionType": trx.TransactionSign === true ? 1 : 0,
+                                            "TransTotal": total,
+                                            "Balance": trx.RunningBalance,
+                                            "imgs": null,
+                                            "DepositeTransferData": foundAsmachtaOnly.DepositeTransferData
+                                        };
+                                    }
+                                }
+                                if (foundAsmachtaOnly) {
+                                    foundAsmachtaOnly = JSON.parse(JSON.stringify(foundAsmachtaOnly));
+                                    const numbersToSum = foundAsmachtaOnly.DepositeTransferData.map(it => Number(it.TransferTotal.toFixed(0)));
+                                    console.log('numbersToSum: ', numbersToSum)
+                                    const targetSums = [Number(total.toFixed(0))];
+                                    const targetSumsSolutions = targetSums.map(target => subsetSum(numbersToSum, target));
+                                    if (targetSumsSolutions.length && targetSumsSolutions[0] !== null) {
+                                        foundAsmachtaOnly.DepositeTransferData = foundAsmachtaOnly.DepositeTransferData.filter(itemCh => {
+                                            if (targetSumsSolutions[0].some(it => it === Number(itemCh.TransferTotal.toFixed(0)))) {
+                                                return true;
+                                            }
+                                        });
+                                    } else {
+                                        foundAsmachtaOnly.DepositeTransferData = foundAsmachtaOnly.DepositeTransferData.filter(item => item.TransferTotal !== (foundAsmachtaOnly.TransferTotal - total));
+                                    }
+                                    foundAsmachtaOnly.DepositeTransferData.forEach((item) => {
+                                        item.DepositeTransferDate = all.banks.core.services.convertDateAll(trx.DateUTC);
+                                    })
+                                    return {
+                                        "Asmachta": trx.ReferenceNumberLong,
+                                        "TransDesc": trx.Description,
+                                        "ValueDate": all.banks.core.services.convertDateAll(trx.DateUTC),
+                                        "TransactionType": trx.TransactionSign === true ? 1 : 0,
+                                        "TransTotal": total,
+                                        "Balance": trx.RunningBalance,
+                                        "imgs": null,
+                                        "DepositeTransferData": foundAsmachtaOnly.DepositeTransferData
+                                    };
+                                } else {
+                                    const foundDepositeTransferDate = ctlOrdersTableJson.filter(it =>
+                                        (
+                                            it.DepositeTransferDate === dateAfterFormat
+                                            ||
+                                            it.DepositeTransferDate === dateAfterFormatPlusDay
+                                        ));
+                                    if (foundDepositeTransferDate) {
+                                        let foundTotalSameInChild = false;
+                                        console.log('foundDepositeTransferDate: ', foundDepositeTransferDate)
+                                        if (foundDepositeTransferDate.length === 1) {
+                                            const foundMatch = foundDepositeTransferDate[0].DepositeTransferData.find(it => it.TransferTotal === total);
+                                            if (foundMatch) {
+                                                foundTotalSameInChild = JSON.parse(JSON.stringify(foundDepositeTransferDate[0]));
+                                                foundTotalSameInChild.DepositeTransferData = [foundMatch]
+                                            }
+                                        }
+                                        if (!foundTotalSameInChild) {
+                                            foundDepositeTransferDate.forEach((item) => {
+                                                const numbersToSum = item.DepositeTransferData.map(it => Number(it.TransferTotal.toFixed(0)));
+                                                const targetSums = [Number(total.toFixed(0))];
+                                                console.log('numbersToSum: ', numbersToSum)
+                                                const targetSumsSolutions = targetSums.map(target => subsetSum(numbersToSum, target));
+                                                console.log('targetSumsSolutions: ', targetSumsSolutions)
+                                                if (targetSumsSolutions.length && targetSumsSolutions[0] !== null) {
+                                                    foundTotalSameInChild = JSON.parse(JSON.stringify(item));
+                                                    foundTotalSameInChild.DepositeTransferData = foundTotalSameInChild.DepositeTransferData.filter(itemCh => {
+                                                        if (targetSumsSolutions[0].some(it => it === Number(itemCh.TransferTotal.toFixed(0)))) {
+                                                            return true;
+                                                        }
+                                                    });
+                                                    console.log('foundTotalSameInChild: ', targetSumsSolutions[0], foundTotalSameInChild);
+                                                }
+
+                                                // const arropt = combinations(mapsTotals)
+                                                // const allSumComb = [];
+                                                // arropt.forEach((it, idx)=>{
+                                                //     const sum = it.reduce( (acc, val)=> {
+                                                //         return acc + val;
+                                                //     }, 0);
+                                                //     allSumComb.push(sum)
+                                                // });
+                                                // if(allSumComb.find(it=> it === total) && !foundTotalSameInChild){
+                                                //     foundTotalSameInChild = item;
+                                                // }
+                                            })
+                                        }
+
+
+                                        if (foundTotalSameInChild) {
+                                            foundTotalSameInChild.DepositeTransferData.forEach((item) => {
+                                                item.DepositeTransferDate = all.banks.core.services.convertDateAll(trx.DateUTC);
+                                            })
+                                            return {
+                                                "Asmachta": trx.ReferenceNumberLong,
+                                                "TransDesc": trx.Description,
+                                                "ValueDate": all.banks.core.services.convertDateAll(trx.DateUTC),
+                                                "TransactionType": trx.TransactionSign === true ? 1 : 0,
+                                                "TransTotal": total,
+                                                "Balance": trx.RunningBalance,
+                                                "imgs": null,
+                                                "DepositeTransferData": foundTotalSameInChild.DepositeTransferData
+                                            };
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                    } catch (e) {
+                        debugger
+                    }
+
                     return {
                         "Asmachta": trx.ReferenceNumberLong,
                         "TransDesc": trx.Description,
@@ -5579,7 +5917,6 @@ all.banks.accounts.aibank = function () {
                                                         + ':\n' + e);
                                                 }
                                             }
-
                                             result.push(
                                                 Object.assign({
                                                     "Asmachta": chk.ReferenceNumberLong,
@@ -5640,7 +5977,7 @@ all.banks.accounts.aibank = function () {
                                     result = [];
                                     if (jsonCheckDataResp.ReturnedDepositChecksItems.length && jsonCheckDataResp.ReturnedDepositChecksItems[0] !== null) {
                                         for (const chk of jsonCheckDataResp.ReturnedDepositChecksItems) {
-                                            let depositeDate = dateFromUTCString(chk.OfficialBusinessDayUTC);
+                                            let depositeDate = dateFromUTCString(chk.OfficialDayUTC);
                                             let checkBankNumber = null, checkBranchNumber = null,
                                                 checkAccountNumber = null;
                                             const chkBBAMatch = /^(\d{1,2})-(\d{1,3})-(\d{4,})$/.exec(chk.CheckFullAccount);
@@ -5653,7 +5990,6 @@ all.banks.accounts.aibank = function () {
                                                 checkBranchNumber = account.BranchNumber;
                                                 checkAccountNumber = account.AccountNumber;
                                             }
-
                                             result.push(
                                                 Object.assign({
                                                     "Asmachta": chk.ReferenceNumberLong,
@@ -5674,6 +6010,45 @@ all.banks.accounts.aibank = function () {
                                                         : "x"
                                                 })
                                             );
+                                        }
+                                        if (result.length && result.every(it => it.ImageNameKey === 'x') && !jsonCheckDataResp.ReturnedDepositChecksItems[0].CheckImageFront && jsonCheckDataResp.ReturnedDepositChecksItems[0].ChequeUniqueId) {
+                                            result = [result[0]]
+                                            try {
+                                                const checkImageResp = await all.banks.core.services.httpReq('https://' + all.banks.accounts.aibank.urlServices
+                                                    + '/ChannelWCF/Broker.svc/ProcessRequest?moduleName=UC_SO_021_GetDepositCheckImages', 'POST', {
+                                                    moduleName: "UC_SO_021_GetDepositCheckImages",
+                                                    reqObj: JSON.stringify({
+                                                        "SessionHeader": {
+                                                            "SessionID": sessionID,
+                                                            "FIID": aibank.site_name
+                                                        },
+                                                        "StateName": "businessaccounttrx",
+                                                        "ModuleName": "ChequeImage",
+                                                        "ChequeUniqueId": jsonCheckDataResp.ReturnedDepositChecksItems[0].ChequeUniqueId
+                                                    }),
+                                                    version: "V4.0"
+                                                }, false, false);
+                                                const jsonCheckImageResp = JSON.parse(checkImageResp.jsonResp);
+                                                jsonCheckDataResp.ReturnedDepositChecksItems[0].CheckImageFront = jsonCheckImageResp.CheckImageFront;
+                                                jsonCheckDataResp.ReturnedDepositChecksItems[0].CheckImageBack = jsonCheckImageResp.CheckImageBack;
+                                                const checkBankNumber = result[0].CheckBankNumber;
+                                                const checkBranchNumber = result[0].CheckBranchNumber;
+                                                const checkAccountNumber = result[0].CheckAccountNumber;
+                                                const depositeDate = dateFromUTCString(jsonCheckDataResp.ReturnedDepositChecksItems[0].OfficialDayUTC);
+                                                result[0].ImageNameKey = !!jsonCheckDataResp.ReturnedDepositChecksItems[0].CheckImageFront
+                                                    ? await mergeAndUploadImages(jsonCheckDataResp.ReturnedDepositChecksItems[0].CheckImageFront, jsonCheckDataResp.ReturnedDepositChecksItems[0].CheckImageBack,
+                                                        ((checkBankNumber && checkBranchNumber && checkAccountNumber)
+                                                            ? parseInt(checkBankNumber) + '' + parseInt(checkBranchNumber) + '' + parseInt(checkAccountNumber) + ''
+                                                            : '')
+                                                        + jsonCheckDataResp.ReturnedDepositChecksItems[0].CheckNumberString + ''
+                                                        + depositeDate.getFullYear() + ("0" + (depositeDate.getMonth() + 1)).slice(-2) + ("0" + depositeDate.getDate()).slice(-2)
+                                                        + '_' + account.BankNumber + '' + account.BranchNumber + '' + account.AccountNumber, checkBankNumber, checkBranchNumber, checkAccountNumber)
+                                                    : "x";
+                                            } catch (e) {
+                                                writeLog('Failed to get check image for UC_SO_021_GetDepositCheckImages: '
+                                                    + JSON.stringify(jsonCheckDataResp.ReturnedDepositChecksItems[0])
+                                                    + ':\n' + e);
+                                            }
                                         }
                                     }
                                     if (jsonCheckDataResp.ReturnedWithdrawChecksItems.length && jsonCheckDataResp.ReturnedWithdrawChecksItems[0] !== null) {
@@ -5807,22 +6182,25 @@ all.banks.accounts.aibank = function () {
                             }),
                             version: "V4.0"
                         }, false, false);
-                        const jsonMultiTransferDataResp = JSON.parse(multiTransferDataResp.jsonResp);
-
-                        const transferDescreptionItems = jsonMultiTransferDataResp.TransferDescreptionItems;
-                        if (transferDescreptionItems) {
-                            return transferDescreptionItems.map((it) => {
-                                return {
-                                    "DepositeTransferDate": all.banks.core.services.convertDateAll(trx.EffectiveDateUTC),
-                                    "BankTransferNumber": it.DescriptionToBankNumber ? Number(it.DescriptionToBankNumber) : null,
-                                    "BranchTransferNumber": it.DescriptionToBranchNumber ? Number(it.DescriptionToBranchNumber) : null,
-                                    "AccountTransferNumber": it.CreditAccountNum ? Number(it.CreditAccountNum) : null,
-                                    "NamePayerTransfer": it.DescriptionOppositeName,
-                                    "DetailsTransfer": it.DescriptionTransferComment,
-                                    "TransferTotal": it.Amount
-                                }
-                            })
-                        } else {
+                        try {
+                            const jsonMultiTransferDataResp = JSON.parse(multiTransferDataResp.jsonResp);
+                            const transferDescreptionItems = jsonMultiTransferDataResp.TransferDescreptionItems;
+                            if (transferDescreptionItems) {
+                                return transferDescreptionItems.map((it) => {
+                                    return {
+                                        "DepositeTransferDate": all.banks.core.services.convertDateAll(trx.EffectiveDateUTC),
+                                        "BankTransferNumber": it.DescriptionToBankNumber ? Number(it.DescriptionToBankNumber) : null,
+                                        "BranchTransferNumber": it.DescriptionToBranchNumber ? Number(it.DescriptionToBranchNumber) : null,
+                                        "AccountTransferNumber": it.CreditAccountNum ? Number(it.CreditAccountNum) : null,
+                                        "NamePayerTransfer": it.DescriptionOppositeName,
+                                        "DetailsTransfer": it.DescriptionTransferComment,
+                                        "TransferTotal": it.Amount
+                                    }
+                                })
+                            } else {
+                                return null;
+                            }
+                        } catch (e) {
                             return null;
                         }
                     }
@@ -5874,7 +6252,8 @@ all.banks.accounts.aibank = function () {
                 }
             }
         } catch (e) {
-
+            console.log('eee', e)
+            return true;
         }
 
     };

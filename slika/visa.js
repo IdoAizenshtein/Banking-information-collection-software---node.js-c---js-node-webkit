@@ -178,6 +178,10 @@ class visa {
         if (Referer !== null) {
             options.headers.Referer = Referer;
         }
+        // const usernameProxy = 'brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '');
+        // if (window.navigator.platform.indexOf('Win') === -1 && (all.banks.accountDetails.deleted_account_ids.length && all.banks.accountDetails.deleted_account_ids[0].toString() === '111111111')) {
+        //     options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
+        // }
         senderReq.sendersServer(options, (error, response, data) => {
             if (error !== null && (error.code === 'ETIMEDOUT' || error.connect === true)) {
                 writeLog("ETIMEDOUT");
@@ -1047,9 +1051,3 @@ class visa {
 }
 
 all.banks.accounts.visaAll = new visa();
-
-
-
-
-
-

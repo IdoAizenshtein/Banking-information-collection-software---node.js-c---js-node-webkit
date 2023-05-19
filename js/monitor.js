@@ -73,14 +73,14 @@ class deleteOldFilesLogs {
         this.linuxUsed = 0;
 
         if (process.platform === 'linux') {
-            exec('df /dev/xvda1 -h --output=pcent', (err, stdout, stderr) => {
+            exec('df /dev/nvme0n1 -h --output=pcent', (err, stdout, stderr) => {
                 if (err === null) {
                     const used = Number(stdout.toString().match(/\d+/)[0]);
                     console.log('% used:', used);
                     this.linuxUsed = used;
                     this.constructorAlt();
                 } else {
-                    exec('df /dev/sda1 -h --output=pcent', (err, stdout, stderr) => {
+                    exec('df /dev/nvme0n1p3 -h --output=pcent', (err, stdout, stderr) => {
                         const used = Number(stdout.toString().match(/\d+/)[0]);
                         console.log('% used:', used);
                         this.linuxUsed = used;
@@ -135,7 +135,6 @@ var vpnHideIp = require('./js/connectToVpn.js');
 var requests = require('request');
 var request = requests.defaults({jar: requests.jar()});
 var connectToVpn = new vpnHideIp();
-
 class monitorTimeVpnConnect {
     constructor() {
         this.runTime = 0;
@@ -195,7 +194,7 @@ class monitorTimeVpnConnect {
             if (vpnTimeLinuxFindBest === null) {
                 window.localStorage.setItem("vpnTimeLinuxFindBest", new Date());
                 if (isIsrael) {
-                    runSoft = "israel";
+                    runSoft = "-i";
                     writeLog("---- Change IP to Israel ----");
                 } else {
                     runSoft = "-f";
@@ -207,7 +206,7 @@ class monitorTimeVpnConnect {
                 if (minutes > 120) {
                     window.localStorage.setItem("vpnTimeLinuxFindBest", new Date());
                     if (isIsrael) {
-                        runSoft = "israel";
+                        runSoft = "-i";
                         writeLog("---- Change IP to Israel ----");
                     } else {
                         runSoft = "-f";
@@ -215,7 +214,7 @@ class monitorTimeVpnConnect {
                     }
                 } else {
                     if (isIsrael) {
-                        runSoft = "israel";
+                        runSoft = "-i";
                         writeLog("---- Change IP to Israel ----");
                     } else {
                         runSoft = "-m";
@@ -273,6 +272,7 @@ class monitorTimeVpnConnect {
                 writeLog("---- The last ip addrress till now -----" + this.ipAddrress);
 
                 if ((ipNow !== this.ipAddrress) && (ipNow !== all.banks.spiderConfig.spiderId)) {
+                    all.banks.accounts.poalimAsakimNew.IpAddress = ipNow.replace(/\s/g, "");
                     writeLog("---- IP successfully changed - Now IP is: " + ipNow + "----");
                     this.afterConnect(cb, true);
                 } else {
@@ -288,6 +288,7 @@ class monitorTimeVpnConnect {
                         }
                     } else {
                         writeLog("---- Not change a long time ----");
+                        window.localStorage.removeItem("vpnTimeLinuxFindBest")
                         this.killVpn((response) => {
                             this.runTime = 0;
                             upd.checkNewVersion((err, newVersionExists, manifest) => {

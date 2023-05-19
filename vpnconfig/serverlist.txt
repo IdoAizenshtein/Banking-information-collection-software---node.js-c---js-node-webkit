@@ -1,268 +1,142 @@
-ad.hma.rocks	Andorra, Andorra la Vella
-ae.hma.rocks	United Arab Emirates, Dubai
-af.hma.rocks	Afghanistan, Kabul
-ag.hma.rocks	Antigua and Barbuda, Saint John's
-ai.hma.rocks	Anguilla, The Valley
-al.hma.rocks	Albania, Tirana
-am.hma.rocks	Armenia, Tsaghkadzor
-ao.hma.rocks	Angola, Luanda
-ar.hma.rocks	Argentina, Buenos Aires
-as.hma.rocks	American Samoa, Pago Pago
-at.hma.rocks	Austria, Carinthia, Klagenfurt
-au.hma.rocks	Australia, New South Wales, Sydney
-aw.hma.rocks	Aruba, Palm Beach
-ax.hma.rocks	Aland Islands, Mariehamn
-az.hma.rocks	Azerbaijan, Qusar
-ba.hma.rocks	Bosnia, Sarajevo
-bb.hma.rocks	Barbados, Worthing
-bd.hma.rocks	Bangladesh, Dhaka
-be.hma.rocks	Belgium, Brussels
-bf.hma.rocks	Burkina Faso, Ouagadougou
-bg.hma.rocks	Bulgaria, Sofia
-bh.hma.rocks	Bahrain, Manama
-bi.hma.rocks	Burundi, Bujumbura
-bj.hma.rocks	Benin, Cotonou
-bm.hma.rocks	Bermuda, Hamilton
-bn.hma.rocks	Brunei, Jerudong
-bo.hma.rocks	Bolivia, Santa Cruz
-br.hma.rocks	Brazil, Joao Pessoa
-bs.hma.rocks	Bahamas, Freeport
-bt.hma.rocks	Bhutan, Thimphu
-bw.hma.rocks	Botswana, Gaborone
-by.hma.rocks	Belarus, Minsk
-bz.hma.rocks	Belize, Belize City
-ca.hma.rocks	Canada, British Columbia, Vancouver
-cc.hma.rocks	Cocos Islands, West Island
-cd.hma.rocks	Congo, Kinshasa
-cf.hma.rocks	Central African Republic, Bangassou
-cg.hma.rocks	Republic of the Congo, Brazzaville
-ch.hma.rocks	Switzerland, Zurich
-ci.hma.rocks	Cote d`Ivoire, Yamoussoukro
-ck.hma.rocks	Cook Islands, Avarua
-cl.hma.rocks	Chile, Santiago
-cm.hma.rocks	Cameroon, Yaounde
-cn.hma.rocks	China, Sichuan Sheng, Chengdu
-co.hma.rocks	Colombia, San Andres
-cr.hma.rocks	Costa Rica, San Jose
-cu.hma.rocks	Cuba, Havana
-cv.hma.rocks	Cape Verde, Cidade Velha
-cx.hma.rocks	Christmas Island, Flying Fish Cove
-cy.hma.rocks	Cyprus, Limassol
-cz.hma.rocks	Czech Republic, Prague
-de.hma.rocks	Germany, Hesse, Frankfurt
-dj.hma.rocks	Republic of Djibouti, Djibouti
-dk.hma.rocks	Denmark, Copenhagen
-dm.hma.rocks	Dominica, Marigot
-do.hma.rocks	Dominican Republic, Punta Cana
-dz.hma.rocks	Algeria, Annaba
-ec.hma.rocks	Ecuador, Quito
-ee.hma.rocks	Estonia, Tallinn
-eg.hma.rocks	Egypt, Cairo
-er.hma.rocks	Eritrea, Asmara
-es.hma.rocks	Spain, Alicante
-et.hma.rocks	Ethiopia, Gondar
-fi.hma.rocks	Finland, Helsinki
-fj.hma.rocks	Fiji, Nadi
-fk.hma.rocks	Falkland Islands, Stanley
-fo.hma.rocks	Faroe Islands, Torshavn
-fr.hma.rocks	France, Paris
-ga.hma.rocks	Gabon, Libreville
-gb.hma.rocks	UK
-london.gb.hma.rocks	UK, London
-scotland.gb.hma.rocks	UK, Scotland, Glasgow
-gd.hma.rocks	Grenada, Saint George
-ge.hma.rocks	Georgia, Tbilisi
-gh.hma.rocks	Ghana, Accra
-gi.hma.rocks	Gibraltar, Catalan
-gl.hma.rocks	Greenland, Ilulissat
-gm.hma.rocks	Gambia, Serekunda
-gn.hma.rocks	Guinea, Conakry
-gp.hma.rocks	Guadeloupe, Le Gosier
-gq.hma.rocks	Equatorial Guinea, Malabo
-gr.hma.rocks	Greece, Patras
-gt.hma.rocks	Guatemala, Guatemala City
-gu.hma.rocks	Guam, Tamuning
-gw.hma.rocks	Guinea-Bissau, Bissau
-gy.hma.rocks	Guyana, Barima-Waini
-hk.hma.rocks	Hong Kong, Shatin
-hn.hma.rocks	Honduras, Tegucigalpa
-hr.hma.rocks	Croatia, Zagreb
-ht.hma.rocks	Haiti, Cap-Haitien
-hu.hma.rocks	Hungary, Budapest
-id.hma.rocks	Indonesia, Jakarta
-ie.hma.rocks	Ireland, Dublin
-il.hma.rocks	Israel, Petah Tikva
-in.hma.rocks	India, Maharashtra, Mumbai
-iq.hma.rocks	Iraq, Baghdad
-ir.hma.rocks	Iran, Isfahan
-is.hma.rocks	Iceland, Reykjavik
-it.hma.rocks	Italy, Pordenone, Porcia
-jm.hma.rocks	Jamaica, Montego Bay
-jo.hma.rocks	Jordan, Amman
-jp.hma.rocks	Japan, Okinawa, Onna
-ke.hma.rocks	Kenya, Nairobi
-kg.hma.rocks	Kyrgyzstan, Bishkek
-kh.hma.rocks	Cambodia, Phnom Penh
-ki.hma.rocks	Kiribati, Umwa Village
-km.hma.rocks	Comoros, Ouani
-kn.hma.rocks	Saint Kitts and Nevis, Basseterre
-kp.hma.rocks	North Korea, Manpo
-kr.hma.rocks	South Korea, Seoul
-kw.hma.rocks	Kuwait, Kuwait City
-ky.hma.rocks	Cayman Islands, Spot Bay
-kz.hma.rocks	Kazakhstan, Shymkent
-la.hma.rocks	Laos, Thakhek
-lb.hma.rocks	Lebanon, Beirut
-lc.hma.rocks	Saint Lucia, Gros Islet
-li.hma.rocks	Liechtenstein, Vaduz
-lk.hma.rocks	Sri Lanka, Moratuwa
-lr.hma.rocks	Liberia, Monrovia
-ls.hma.rocks	Lesotho, Peka
-lt.hma.rocks	Lithuania, Siauliai
-lu.hma.rocks	Luxembourg
-lv.hma.rocks	Latvia, Riga
-ly.hma.rocks	Libya, Ghadames
-ma.hma.rocks	Morocco, Fes
-mc.hma.rocks	Monaco, Monaco
-md.hma.rocks	Moldova, Chisinau
-me.hma.rocks	Montenegro, Becici
-mg.hma.rocks	Madagascar, Antsiranana
-mk.hma.rocks	Macedonia, Skopje
-ml.hma.rocks	Mali, Bamako
-mm.hma.rocks	Myanmar, Yangon
-mn.hma.rocks	Mongolia, Suhbaatar
-mo.hma.rocks	Macau, Macau
-ms.hma.rocks	Montserrat, Plymouth
-mt.hma.rocks	Malta, Cospicua
-mu.hma.rocks	Mauritius, Port Louis
-mv.hma.rocks	Maldives, Male
-mw.hma.rocks	Malawi, Lilongwe
-mx.hma.rocks	Mexico, Sinaloa, Mazatlan
-my.hma.rocks	Malaysia, Kuala Lumpur
-mz.hma.rocks	Mozambique, Pemba
-na.hma.rocks	Namibia, Windhoek
-nc.hma.rocks	New Caledonia, Noumea
-ne.hma.rocks	Niger, Niamey
-nf.hma.rocks	Norfolk Island, Kingston
-ng.hma.rocks	Nigeria, Lagos
-ni.hma.rocks	Nicaragua, Managua
-nl.hma.rocks	Netherlands, Amsterdam
-no.hma.rocks	Norway, Oslo
-np.hma.rocks	Nepal, Janakpur
-nr.hma.rocks	Nauru, Anabar
-nu.hma.rocks	Niue, Alofi
-nz.hma.rocks	New Zealand, Auckland
-om.hma.rocks	Oman, Salalah
-pa.hma.rocks	Panama, Panama City
-pe.hma.rocks	Peru, Cusco
-pg.hma.rocks	Papua New Guinea, Alotau
-ph.hma.rocks	Philippines, Baguio
-pk.hma.rocks	Pakistan, Karachi
-pl.hma.rocks	Poland, Warsaw
-pm.hma.rocks	Saint Pierre and Miquelon, Saint-Pierre
-pn.hma.rocks	Pitcairn Islands, Adamstown
-pr.hma.rocks	Puerto Rico, San Juan
-ps.hma.rocks	Palestine, Bethlehem
-pt.hma.rocks	Portugal, Leiria
-pw.hma.rocks	Palau, Melekeok
-py.hma.rocks	Paraguay, Boqueron
-qa.hma.rocks	Qatar, Doha
-ro.hma.rocks	Romania, Bucharest
-rs.hma.rocks	Serbia, Belgrade
-ru.hma.rocks	Russia, Moscow
-rw.hma.rocks	Rwanda, Kigali
-sa.hma.rocks	Saudi Arabia, Riyadh
-sb.hma.rocks	Solomon Islands, Honiara
-sd.hma.rocks	Sudan, Khartoum
-se.hma.rocks	Sweden, Stockholm, Nacka
-sg.hma.rocks	Republic of Singapore, Singapore
-sh.hma.rocks	Saint Helena, Tristan Da Cunha
-si.hma.rocks	Slovenia, Vrhnika
-sj.hma.rocks	Svalbard and Jan Mayen, Longyearbyen
-sk.hma.rocks	Slovakia, Bratislava
-sm.hma.rocks	San Marino, San Marino
-sn.hma.rocks	Senegal, Dakar
-so.hma.rocks	Somalia, Afgooye
-sr.hma.rocks	Suriname, Paramaribo
-st.hma.rocks	Sao Tome and Principe, Sao Tome
-sv.hma.rocks	El Salvador, San Miguel
-sy.hma.rocks	Syria, Ad Darah
-sz.hma.rocks	Swaziland, Manzini
-tc.hma.rocks	Turks and Caicos Islands, Balfour Town
-td.hma.rocks	Chad, N'Djamena
-tg.hma.rocks	Togo, Lome
-th.hma.rocks	Thailand, Bangkok
-tj.hma.rocks	Tajikistan, Dushanbe
-tk.hma.rocks	Tokelau, Atafu
-tm.hma.rocks	Turkmenistan, Ashgabat
-tn.hma.rocks	Tunisia, Mahdia
-to.hma.rocks	Tonga, Nukualofa
-tr.hma.rocks	Turkey, Istanbul
-tt.hma.rocks	Trinidad and Tobago, San Fernando
-tv.hma.rocks	Tuvalu, Vaitupu
-tw.hma.rocks	Taiwan, Taipei
-tz.hma.rocks	Tanzania, Arusha
-ua.hma.rocks	Ukraine, Odessa
-ug.hma.rocks	Uganda, Kampala
-us.hma.rocks	USA
-ak.us.hma.rocks	USA, Alaska, Anchorage
-al.us.hma.rocks	USA, Alabama, Montgomery
-ar.us.hma.rocks	USA, Arkansas, Magnolia
-az.us.hma.rocks	USA, Arizona, Phoenix
-ca.us.hma.rocks	USA, California, Los Angeles
-ct.us.hma.rocks	USA, Connecticut, Trumbull
-de.us.hma.rocks	USA, Delaware, Wilmington
-fl.us.hma.rocks	USA, Florida, Miami
-ga.us.hma.rocks	USA, Georgia, Atlanta
-hi.us.hma.rocks	USA, Hawaii, Honolulu
-ia.us.hma.rocks	USA, Iowa, Des Moines
-id.us.hma.rocks	USA, Idaho, Idaho Falls
-il.us.hma.rocks	USA, Illinois, Chicago
-in.us.hma.rocks	USA, Indiana, South Bend
-ks.us.hma.rocks	USA, Kansas, Wichita
-ky.us.hma.rocks	USA, Kentucky, Louisville
-la.us.hma.rocks	USA, Louisiana, New Orleans
-ma.us.hma.rocks	USA, Massachusetts, Boston
-md.us.hma.rocks	USA, Maryland, Baltimore
-me.us.hma.rocks	USA, Maine, Bath
-mi.us.hma.rocks	USA, Michigan, Lansing
-mn.us.hma.rocks	USA, Minnesota, Saint Paul
-mo.us.hma.rocks	USA, Missouri, Kansas City
-ms.us.hma.rocks	USA, Mississippi, Louisville
-mt.us.hma.rocks	USA, Montana, Billings
-nc.us.hma.rocks	USA, North Carolina, Asheville
-nd.us.hma.rocks	USA, North Dakota, Grand Forks
-ne.us.hma.rocks	USA, Nebraska, Omaha
-nh.us.hma.rocks	USA, New Hampshire, Bedford
-nm.us.hma.rocks	USA, New Mexico, Albuquerque
-nv.us.hma.rocks	USA, Nevada, Las Vegas
-ny.us.hma.rocks	USA, New York, Manhattan
-oh.us.hma.rocks	USA, Ohio, Columbus
-ok.us.hma.rocks	USA, Oklahoma, Oklahoma City
-pa.us.hma.rocks	USA, Pennsylvania, Wilkes-Barre
-ri.us.hma.rocks	USA, Rhode Island, Providence
-sc.us.hma.rocks	USA, South Carolina, Columbia
-sd.us.hma.rocks	USA, South Dakota, Sioux Falls
-tn.us.hma.rocks	USA, Tennessee, Nashville
-tx.us.hma.rocks	USA, Texas, Dallas
-ut.us.hma.rocks	USA, Utah, Salt Lake City
-va.us.hma.rocks	USA, Virginia, Ashburn
-vt.us.hma.rocks	USA, Vermont, Rutland
-wa.us.hma.rocks	USA, Washington, Seattle
-wi.us.hma.rocks	USA, Wisconsin, Madison
-wv.us.hma.rocks	USA, West Virginia, Philippi
-wy.us.hma.rocks	USA, Wyoming, Cheyenne
-uy.hma.rocks	Uruguay, Montevideo
-uz.hma.rocks	Uzbekistan, Samarkand
-va.hma.rocks	Vatican, Vatican City
-vc.hma.rocks	Saint Vincent and the Grenadines, Kingstown
-ve.hma.rocks	Venezuela, Caracas
-vg.hma.rocks	British Virgin Islands, Tortola
-vn.hma.rocks	Vietnam, Ho Chi Minh City
-vu.hma.rocks	Vanuatu, Loltong
-ws.hma.rocks	Samoa, Matatufu
-ye.hma.rocks	Yemen, Sanaa
-za.hma.rocks	South Africa, Johannesburg
-zm.hma.rocks	Zambia, Lusaka
-zw.hma.rocks	Zimbabwe, Harare
-
+albania-ca-version-2.expressnetw.com               Albania
+andorra-ca-version-2.expressnetw.com               Andorra
+argentina-ca-version-2.expressnetw.com                Argentina
+armenia-ca-version-2.expressnetw.com                                 Armenia
+australia-brisbane-ca-version-2.expressnetw.com               Australia Brisbane
+australia-melbourne-ca-version-2.expressnetw.com               Australia - Melbourne
+australia-perth-ca-version-2.expressnetw.com               Australia - Perth
+australia-sydney-2-ca-version-2.expressnetw.com               Australia - Sydney - 2
+australia-sydney-ca-version-2.expressnetw.com               Australia - Sydney
+austria-ca-version-2.expressnetw.com               Austria
+azerbaijan-ca-version-2.expressnetw.com               Azerbaijan
+bahamas-ca-version-2.expressnetw.com               Bahamas
+bangladesh-ca-version-2.expressnetw.com               Bangladesh
+belarus-ca-version-2.expressnetw.com               Belarus
+belgium-ca-version-2.expressnetw.com               Belgium
+bhutan-ca-version-2.expressnetw.com               Bhutan
+bosniaandherzegovina-ca-version-2.expressnetw.com               Bosnia And Herzegovina
+brazil-2-ca-version-2.expressnetw.com               Brazil - 2
+brazil-ca-version-2.expressnetw.com               Brazil
+brunei-ca-version-2.expressnetw.com               Brunei
+cambodia-ca-version-2.expressnetw.com               Cambodia
+canada-montreal-ca-version-2.expressnetw.com               Canada - Montreal - 2
+canada-montreal-ca-version-2.expressnetw.com               Canada - Montreal
+canada-toronto-2-ca-version-2.expressnetw.com               Canada - Toronto - 2
+canada-toronto-ca-version-2.expressnetw.com               Canada - Toronto
+canada-vancouver-ca-version-2.expressnetw.com               Canada - Vancouver
+chile-ca-version-2.expressnetw.com               Chile
+colombia-ca-version-2.expressnetw.com               Colombia
+costarica-ca-version-2.expressnetw.com               Costa Rica
+croatia-ca-version-2.expressnetw.com               Croatia
+cyprus-ca-version-2.expressnetw.com               Cyprus
+czechrepublic-ca-version-2.expressnetw.com               Czech Republic
+denmark-ca-version-2.expressnetw.com               Denmark
+ecuador-ca-version-2.expressnetw.com               Ecuador
+estonia-ca-version-2.expressnetw.com               Estonia
+finland-ca-version-2.expressnetw.com               Finland
+france-paris-1-ca-version-2.expressnetw.com               France - Paris - 1
+france-paris-2-ca-version-2.expressnetw.com               France - Paris - 2
+france-strasbourg-ca-version-2.expressnetw.com               France - Strasbourg
+georgia-ca-version-2.expressnetw.com               Georgia
+germany-frankfurt-1-ca-version-2.expressnetw.com               Germany - Frankfurt - 1
+germany-frankfurt-2-ca-version-2.expressnetw.com               Germany - Frankfurt - 2
+germany-darmstadt-ca-version-2.expressnetw.com               Germany - Frankfurt - 3
+germany-nuremberg-ca-version-2.expressnetw.com               Germany - Nuremberg
+greece-ca-version-2.expressnetw.com               Greece
+guatemala-ca-version-2.expressnetw.com               Guatemala
+hongkong-2-ca-version-2.expressnetw.com               Hong Kong - 2
+hongkong4-ca-version-2.expressnetw.com               Hong Kong - 4
+hungary-ca-version-2.expressnetw.com               Hungary
+iceland-ca-version-2.expressnetw.com               Iceland
+india-chennai-ca-version-2.expressnetw.com               India - Chennai
+india-mumbai-1-ca-version-2.expressnetw.com               India - Mumbai - 1
+indonesia-ca-version-2.expressnetw.com               Indonesia
+ireland-ca-version-2.expressnetw.com               Ireland
+isleofman-ca-version-2.expressnetw.com               Isle Of Man
+israel-ca-version-2.expressnetw.com               Israel
+italy-cosenza-ca-version-2.expressnetw.com               Italy - Cosenza
+italy-milan-ca-version-2.expressnetw.com               Italy - Milan
+japan-kawasaki-ca-version-2.expressnetw.com               Japan - Kawasaki
+japan-tokyo-1-ca-version-2.expressnetw.com               Japan - Tokyo - 1
+japan-tokyo-2-ca-version-2.expressnetw.com               Japan - Tokyo - 2
+jersey-ca-version-2.expressnetw.com               Jersey
+kazakhstan-ca-version-2.expressnetw.com               Kazakhstan
+kenya-ca-version-2.expressnetw.com               Kenya
+kyrgyzstan-ca-version-2.expressnetw.com               Kyrgyzstan
+laos-ca-version-2.expressnetw.com               Laos
+latvia-ca-version-2.expressnetw.com               Latvia
+liechtenstein-ca-version-2.expressnetw.com               Liechtenstein
+lithuania-ca-version-2.expressnetw.com               Lithuania
+luxembourg-ca-version-2.expressnetw.com               Luxembourg
+macau-ca-version-2.expressnetw.com               Macau
+malaysia-ca-version-2.expressnetw.com               Malaysia
+malta-ca-version-2.expressnetw.com               Malta
+mexico-ca-version-2.expressnetw.com               Mexico
+moldova-ca-version-2.expressnetw.com               Moldova
+monaco-ca-version-2.expressnetw.com               Monaco
+mongolia-ca-version-2.expressnetw.com               Mongolia
+montenegro-ca-version-2.expressnetw.com               Montenegro
+myanmar-ca-version-2.expressnetw.com               Myanmar
+nepal-ca-version-2.expressnetw.com               Nepal
+netherlands-amsterdam-2-ca-version-2.expressnetw.com               Netherlands - Amsterdam - 2
+netherlands-amsterdam-ca-version-2.expressnetw.com               Netherlands - Amsterdam
+netherlands-rotterdam-ca-version-2.expressnetw.com               Netherlands - Rotterdam
+netherlands-thehague-ca-version-2.expressnetw.com               Netherlands - The Hague
+newzealand-ca-version-2.expressnetw.com               New Zealand
+macedonia-ca-version-2.expressnetw.com               North Macedonia
+norway-ca-version-2.expressnetw.com               Norway
+pakistan-ca-version-2.expressnetw.com               Pakistan
+panama-ca-version-2.expressnetw.com               Panama
+peru-ca-version-2.expressnetw.com               Peru
+ph-via-sing-ca-version-2.expressnetw.com               Philippines Via Singapore
+poland-ca-version-2.expressnetw.com               Poland
+portugal-ca-version-2.expressnetw.com               Portugal
+romania-ca-version-2.expressnetw.com               Romania
+serbia-ca-version-2.expressnetw.com               Serbia
+singapore-cbd-ca-version-2.expressnetw.com               Singapore - CBD
+singapore-jurong-ca-version-2.expressnetw.com               Singapore - Jurong
+singapore-marinabay-ca-version-2.expressnetw.com               Singapore - Marina Bay
+slovakia-ca-version-2.expressnetw.com               Slovakia
+slovenia-ca-version-2.expressnetw.com               Slovenia
+southafrica-ca-version-2.expressnetw.com               South Africa
+southkorea2-ca-version-2.expressnetw.com               South Korea - 2
+spain-barcelona-ca-version-2.expressnetw.com               Spain - Barcelona
+spain-ca-version-2.expressnetw.com               Spain - Madrid
+srilanka-ca-version-2.expressnetw.com               Sri Lanka
+sweden-ca-version-2.expressnetw.com               Sweden
+switzerland-2-ca-version-2.expressnetw.com               Switzerland - 2
+switzerland-ca-version-2.expressnetw.com               Switzerland
+taiwan-2-ca-version-2.expressnetw.com               Taiwan - 3
+thailand-ca-version-2.expressnetw.com               Thailand
+turkey-ca-version-2.expressnetw.com               Turkey
+ukraine-ca-version-2.expressnetw.com               Ukraine
+uk-berkshire-2-ca-version-2.expressnetw.com               UK - Docklands(1)
+uk-east-london-ca-version-2.expressnetw.com               UK - East London(1)
+uk-london-ca-version-2.expressnetw.com               UK - London
+uruguay-ca-version-2.expressnetw.com               Uruguay
+usa-atlanta-ca-version-2.expressnetw.com               USA - Atlanta
+usa-chicago-ca-version-2.expressnetw.com               USA - Chicago
+usa-dallas-2-ca-version-2.expressnetw.com               USA - Dallas - 2
+usa-dallas-ca-version-2.expressnetw.com               USA - Dallas
+usa-denver-ca-version-2.expressnetw.com               USA - Denver
+usa-losangeles-1-ca-version-2.expressnetw.com               USA - Los Angeles - 1
+usa-losangeles-2-ca-version-2.expressnetw.com               USA - Los Angeles - 2
+usa-losangeles-3-ca-version-2.expressnetw.com               USA - Los Angeles - 3
+usa-los-angeles-4-ca-version-2.expressnetw.com               USA - Los Angeles - 4
+usa-losangeles5-ca-version-2.expressnetw.com               USA - Los Angeles - 5
+usa-losangeles-ca-version-2.expressnetw.com               USA - Los Angeles
+usa-miami-ca-version-2.expressnetw.com               USA - Miami
+usa-newjersey-1-ca-version-2.expressnetw.com               USA - New Jersey - 1
+usa-newjersey2-ca-version-2.expressnetw.com               USA - New Jersey - 2
+usa-newjersey-3-ca-version-2.expressnetw.com               USA - New Jersey - 3
+us-new-york-2-ca-version-2.expressnetw.com               USA - New York - 2
+usa-newyork-ca-version-2.expressnetw.com               USA - New York
+usa-saltlakecity-ca-version-2.expressnetw.com               USA - Salt Lake City
+usa-sanfrancisco-ca-version-2.expressnetw.com               USA - San Francisco
+usa-seattle-ca-version-2.expressnetw.com               USA - Seattle
+usa-tampa-1-ca-version-2.expressnetw.com               USA - Tampa - 1
+usa-washingtondc-2-ca-version-2.expressnetw.com               USA - Washington DC - 2
+usa-washingtondc-ca-version-2.expressnetw.com               USA - Washington DC
+uzbekistan-ca-version-2.expressnetw.com               Uzbekistan
+venezuela-ca-version-2.expressnetw.com               Venezuela
+vietnam-ca-version-2.expressnetw.com               Vietnam

@@ -304,7 +304,7 @@ class israCard {
                         }
                     ],
                     true
-                );                
+                );
             }
 
             //console.log(args)
@@ -455,7 +455,7 @@ class israCard {
                         }
                     ]
                 );
-               args = await this.isracardPost(
+                args = await this.isracardPost(
                     `https://${this.rootUrl}/services/ProxyRequestHandler.ashx?reqName=IsRegisterNoReg`,
                     `https://${this.rootUrl}/personalarea/login/`,
                     this.cookies,
@@ -574,11 +574,13 @@ class israCard {
                 return;
             }
 
-            const cardsToTraverse = [
+            let cardsToTraverse = [
                 ...(Array.isArray(data["CardsList_102DigitalBean"].Table1) ? data["CardsList_102DigitalBean"].Table1 : []),
-                ...(Array.isArray(data["CardsList_102DigitalBean"].Table2) ? data["CardsList_102DigitalBean"].Table2 : [])
+                ...(Array.isArray(data["CardsList_102DigitalBean"].Table2) ? data["CardsList_102DigitalBean"].Table2 : []),
+                ...(Array.isArray(data["CardsList_102DigitalBean"].Table3) ? data["CardsList_102DigitalBean"].Table3 : []),
             ];
 
+            cardsToTraverse = cardsToTraverse.filter(it => it.cardNumber);
             writeLog("טבלת כרטיסי אשראי ראשית " + JSON.stringify(cardsToTraverse));
             if (cardsToTraverse.length) {
                 writeLog("מספר כרטיסי אשראי קיימים: ", cardsToTraverse.length);
@@ -617,6 +619,7 @@ class israCard {
                             .filter(monyearFuture => monyearFuture.order > maxProcessed)
                             .reverse()
                             .forEach((monyearFuture) => this.monthOfCard.push(monyearFuture));
+
                     } else if (this.monthOfCard[i].order) {
                         digForMoreFutureTransactions = cardsToTraverse
                             .some((crd) => {
@@ -630,6 +633,7 @@ class israCard {
                             continue;
                         }
                     }
+
 
                     for (let value of cardsToTraverse) {
                         var resCard = {
@@ -902,7 +906,7 @@ class israCard {
                                             "CardNumber": resCard.cardNumber,
                                             "NextBillingDate": valueCardsRows['fullPaymentDate'] ? valueCardsRows['fullPaymentDate'] : ((txnAbroadTotalGroups[totalGroupIdx] && txnAbroadTotalGroups[totalGroupIdx]["NextBillingDate"]) ? txnAbroadTotalGroups[totalGroupIdx]["NextBillingDate"] : resCard.billingDate),
                                             // "NextCycleTotal": (txnAbroadTotalGroups && txnAbroadTotalGroups[totalGroupIdx]) ? txnAbroadTotalGroups[totalGroupIdx]["NextCycleTotal"] : (totalDollar ? totalDollar : totalEuro),
-                                            "NextCycleTotal": txnAbroad[txnAbroad.length-1].paymentSumOutbound,
+                                            "NextCycleTotal": txnAbroad[txnAbroad.length - 1].paymentSumOutbound,
                                             "TransDesc": valueCardsRows.fullSupplierNameOutbound,
                                             "TransTotal": valueCardsRows.paymentSumOutbound,
                                             "ValueDate": valueCardsRows.fullPurchaseDateOutbound,

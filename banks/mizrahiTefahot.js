@@ -9,8 +9,8 @@ all.banks.accounts.mizrahiTefahot = function () {
     mizrahiTefahot.timesChangeIp = 0;
     mizrahiTefahot.changeIp = function () {
         mizrahiTefahot.timesChangeIp++;
-        writeLog("---- Start ChangeIp again----");
-        all.banks.core.main.changeIpV4(false).then(function (res) {
+        writeLog("---- Start ChangeIp again to Israeli IP----");
+        all.banks.core.main.changeIpV4('israel').then(function (res) {
             if (res) {
                 console.log(res);
                 mizrahiTefahot.login();
@@ -128,7 +128,7 @@ all.banks.accounts.mizrahiTefahot = function () {
 //         writeLog("senderRequest: " + options.uri);
 
         // const usernameProxy = 'brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '');
-        // if (window.navigator.platform.indexOf('Win') === -1) {
+        // if (window.navigator.platform.indexOf('Win') === -1 && (all.banks.accountDetails.deleted_account_ids.length && all.banks.accountDetails.deleted_account_ids[0].toString() === '111111111')) {
         //     options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
         // }
         return new Promise((resolve, reject) => {
@@ -212,13 +212,12 @@ all.banks.accounts.mizrahiTefahot = function () {
         mizrahiTefahot.numberOfOptions = 0;
         mizrahiTefahot.timeOutFunc;
         mizrahiTefahot.cookies = "";
-
         let args = await mizrahiTefahot.senderGet(
             'https://www.mizrahi-tefahot.co.il/login/index.html',
             '',
             null,
             'www.mizrahi-tefahot.co.il'
-        )
+        );
         let [error, response, res] = [...args];
         if (!error) {
             try {
@@ -254,12 +253,13 @@ all.banks.accounts.mizrahiTefahot = function () {
                         }
                         if (data.ReturnMessagesKey === 'LoginOK') {
                             mizrahiTefahot.xsrfToken = data.XsrfToken;
-                            // let args = await mizrahiTefahot.senderGet(
-                            //     'https://mto.mizrahi-tefahot.co.il/OnlineApp/ge/legacy/root-main-personal-mailbox/items',
-                            //     'https://www.mizrahi-tefahot.co.il/',
-                            //     mizrahiTefahot.cookies,
-                            //     'mto.mizrahi-tefahot.co.il'
-                            // )
+
+                            await mizrahiTefahot.senderGet(
+                                'https://mto.mizrahi-tefahot.co.il/Online/Default.aspx?language=he-IL',
+                                'https://www.mizrahi-tefahot.co.il/',
+                                mizrahiTefahot.cookies,
+                                'mto.mizrahi-tefahot.co.il'
+                            )
                             // let [error, response, res] = [...args];
                             // if (error) {
                             //     all.banks.core.services.errorLog('שגיאה')
@@ -363,15 +363,18 @@ all.banks.accounts.mizrahiTefahot = function () {
                                 res = all.banks.core.services.parseHtml(res);
                                 var isNotSelectNew = $(res).find('select#ddlAcounts option').length;
                                 if (isNotSelectNew) {
+                                    writeLog("---- isNotSelectNew ----" + isNotSelectNew);
+
                                     mizrahiTefahot.numberOfOptions = isNotSelectNew;
                                     // mizrahiTefahot.intervals = setInterval(function () {
                                     //     // $.get("https://mto.mizrahi-tefahot.co.il/Online/api/newGE/keepAlive");
                                     // }, 120000);
                                     nextStepLoad();
                                 } else {
+                                    writeLog("---- isNotSelectNew ----" + isNotSelectNew);
                                     let args = await mizrahiTefahot.senderPostJSON(
                                         'https://mto.mizrahi-tefahot.co.il/Online/api/SkyBL/logon',
-                                        'https://mto.mizrahi-tefahot.co.il/OnlineApp/ge/legacy/root-main-personal-mailbox/items',
+                                        'https://mto.mizrahi-tefahot.co.il/OnlineApp/index.html',
                                         mizrahiTefahot.cookies,
                                         JSON.stringify({
                                             "appId": "skyWeb",
@@ -381,14 +384,26 @@ all.banks.accounts.mizrahiTefahot = function () {
                                         })
                                     )
                                     let [error, response, dataRes] = [...args];
+                                    writeLog("---- SkyBL/logon ----" + dataRes);
+                                    if (error && dataRes === undefined) {
+                                        writeLog("---- Mizrahi do not accept the selected ip address, Change to an Israeli IP address ----");
+                                        mizrahiTefahot.changeIp();
+                                        return;
+                                    }
+
                                     if (error) {
+                                        writeLog("---- SkyBL/logon error ----" + error);
                                         myEmitterLogs(9);
                                         return;
                                     }
-                                    if (dataRes && typeof dataRes === 'string') {
-                                        dataRes = JSON.parse(dataRes);
-                                    }
 
+                                    try {
+                                        if (dataRes && typeof dataRes === 'string') {
+                                            dataRes = JSON.parse(dataRes);
+                                        }
+                                    } catch (e) {
+                                        writeLog("---- error catch 1 ----" + e.stack.replace(/\n|\r/g, ""));
+                                    }
                                     if (dataRes.errorCode && dataRes.errorCode === "general_error") {
                                         if (dataRes.redirectUrl && dataRes.redirectUrl.includes('לא ניתן להשתמש בשירות')) {
                                             myEmitterLogs(5, dataRes.redirectUrl);  //login failed
@@ -503,6 +518,7 @@ all.banks.accounts.mizrahiTefahot = function () {
                             } else if (data.ReturnMessagesKey === 'PasswordMustChange') {
                                 myEmitterLogs(6); //Password expired
                             } else {
+                                writeLog("---- error ----" + data);
                                 myEmitterLogs(9, JSON.stringify(data));
                             }
                         }
@@ -520,10 +536,12 @@ all.banks.accounts.mizrahiTefahot = function () {
                     // mizrahiTefahot.changeIp();
                     all.banks.core.services.errorLog('---- URL was rejected ----');
                 }
-            } catch (e) {
-                all.banks.core.services.errorLog(JSON.stringify(e))
+            } catch (err) {
+                writeLog("---- error catch ----" + err.stack.replace(/\n|\r/g, ""));
+                all.banks.core.services.errorLog(err.stack.replace(/\n|\r/g, ""))
             }
         } else {
+            writeLog("---- error changeIp ----");
             mizrahiTefahot.changeIp();
         }
 
@@ -6114,7 +6132,6 @@ all.banks.accounts.mizrahiTefahot = function () {
             var url = "https://mto.mizrahi-tefahot.co.il/" + mizrahiTefahot.urlPattern + "/Matach/p403.aspx";
             mizrahiTefahot.sender(url, "POST", post, true)
                 .then(function (response) {
-                    debugger
                     var htmlPage = "<html><body>" + response + "</body></html>";
                     var res = all.banks.core.services.parseHtml(htmlPage);
                     response = null;

@@ -798,6 +798,15 @@ input.checkSwitch:checked + .slider:before {
 #senderToken > div.left > div > label.isOtp.enabled {
     opacity: 1;
 }
+#senderToken > div.left > div > label.isGetAccFromServer {
+    margin-left: 40px;
+    width: 98px;
+    opacity: 0.1;
+}
+
+#senderToken > div.left > div > label.isGetAccFromServer.enabled {
+    opacity: 1;
+}
 
 #passOtp {
     display: none;

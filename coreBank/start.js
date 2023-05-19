@@ -1,5 +1,6 @@
 var os = require('os');
 var fs = require('fs');
+const setVpnLoginFunc = require('./js/setVpnLogin.js');
 var newVersionCheckIntervalId = null;
 var tryingForNewVersion = false;
 var copyPath, execPath;
@@ -67,17 +68,18 @@ fs.stat(pathSoftware, function (err, stats) {
             all.banks.core.services.loadVarsFromConfig()
                 .then(function (response) {
                     all.banks.spiderConfig = JSON.parse(response);
-                    all.banks.spiderConfig.runPoalimAsakimParallel = all.banks.spiderConfig.spiderId === 'moty_office' || all.banks.spiderConfig.spiderId === 'Kasefet' || all.banks.spiderConfig.spiderId === 'mosa_garis' || all.banks.spiderConfig.spiderId === 'Ido' || all.banks.spiderConfig.spiderId === '82.81.225.234';
-                    all.banks.spiderConfig.poalimBizThreadNum = "10";
+                    all.banks.spiderConfig.runPoalimAsakimParallel = true;
+                    //all.banks.spiderConfig.spiderId === 'moty_office' || all.banks.spiderConfig.spiderId === 'Kasefet' || all.banks.spiderConfig.spiderId === 'Kasefet2' || all.banks.spiderConfig.spiderId === 'mosa_garis' || all.banks.spiderConfig.spiderId === 'Ido' || all.banks.spiderConfig.spiderId === '82.81.225.234';
+                    all.banks.spiderConfig.poalimBizThreadNum = "30";
                     all.banks.spiderConfig.poalimBizCheckThreadNum = "10";
-                    all.banks.spiderConfig.numOfAccForRenewLogin = "10";
-                    all.banks.spiderConfig.numOfAccForRenewLoginOsh = "20";
-                    all.banks.spiderConfig.numOfAccForRenewLoginCards = "50";
+                    all.banks.spiderConfig.numOfAccForRenewLogin = "60";
+                    all.banks.spiderConfig.numOfAccForRenewLoginOsh = "60";
+                    all.banks.spiderConfig.numOfAccForRenewLoginCards = "30";
                     all.banks.spiderConfig.numberOfOperationsCards = "30";
-                    all.banks.spiderConfig.numOfAccForRenewLoginMatah = "51";
-                    all.banks.spiderConfig.numberOfOperationsMatah = "50";
+                    all.banks.spiderConfig.numOfAccForRenewLoginMatah = "60";
+                    all.banks.spiderConfig.numberOfOperationsMatah = "30";
                     all.banks.spiderConfig.numberOfOperationsNilvim = "30";
-                    all.banks.spiderConfig.numOfAccForRenewLoginNilvim = "50";
+                    all.banks.spiderConfig.numOfAccForRenewLoginNilvim = "60";
                     exportJson.writeFileWithFolder('spider_config.json', all.banks.spiderConfig, {spaces: 4}, function (err) {
 
                     });
@@ -212,18 +214,45 @@ fs.stat(pathSoftware, function (err, stats) {
                                         "changeIp": false,
                                         "timeToChaneIp": "2"
                                     }
-                                    if (error == null) {
+                                    if (error == null && /^linux/.test(process.platform)) {
                                         dataJsonConfig.changeIp = true;
                                         dataJsonConfig.isISO = true;
                                         dataJsonConfig.sendToServer = "https://dataload.bizibox.biz";
+
+                                        setVpnLoginFunc.setVpnLogin((isSet) => {
+                                            if (isSet) {
+                                                if(isSet !== true){
+                                                    dataJsonConfig.vpn_type = isSet;
+                                                }
+                                                dataJsonConfig.changeIp = true;
+                                            } else {
+                                                dataJsonConfig.changeIp = false;
+                                            }
+                                            exportJson.writeFileWithFolder('spider_config.json', dataJsonConfig, {spaces: 4}, function (err) {
+                                                if (err) {
+                                                    console.log('Error writing file');
+                                                } else {
+                                                    setTimeout(() => {
+                                                        setVpnLoginFunc.reboot((rebootSuc) => {
+                                                            if (!rebootSuc) {
+                                                                all.banks.core.services.reloadPage();
+                                                            }
+                                                        });
+                                                    }, 10000);
+                                                }
+                                            });
+                                        })
+                                    } else {
+                                        exportJson.writeFileWithFolder('spider_config.json', dataJsonConfig, {spaces: 4}, function (err) {
+                                            if (err) {
+                                                console.log('Error writing file');
+                                            } else {
+                                                all.banks.core.services.reloadPage();
+                                            }
+                                        });
                                     }
-                                    exportJson.writeFileWithFolder('spider_config.json', dataJsonConfig, {spaces: 4}, function (err) {
-                                        if (err) {
-                                            console.log('Error writing file');
-                                        } else {
-                                            all.banks.core.services.reloadPage();
-                                        }
-                                    });
+
+
                                 });
                             }
                         }).fail(function () {

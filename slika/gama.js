@@ -49,7 +49,7 @@ class gama {
                 if (currentContent.find('.error.help-block').length) {
                     writeLog("gama error.help-block");
                     // debugger
-                    await clearProxy();
+                    // await clearProxy();
                     if (currentContent.find('.error.help-block').text().includes('תוקף הסיסמא פג')) {
                         myEmitterLogs(6);
                         resolve(false);
@@ -508,7 +508,7 @@ class gama {
                         }
 
                         await this.logoutWait();
-                        await clearProxy();
+                        // await clearProxy();
                         monitorVpn.killVpn(async () => {
                             let keepTrying = true;
                             do {

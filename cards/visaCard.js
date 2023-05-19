@@ -106,10 +106,10 @@ class visaCard {
 //        writeLog("visaSend: " + JSON.stringify(options));
 //         writeLog("visaSendRequest: " + options.uri);
 
-        const usernameProxy = 'brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '');
-        if (window.navigator.platform.indexOf('Win') === -1) {
-            options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
-        }
+        // const usernameProxy = 'brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '');
+        // if (window.navigator.platform.indexOf('Win') === -1) {
+        //     options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
+        // }
         return new Promise((resolve, reject) => {
             senderReq.sendersServer(options, (error, response, data) => {
                 if (response !== undefined) {

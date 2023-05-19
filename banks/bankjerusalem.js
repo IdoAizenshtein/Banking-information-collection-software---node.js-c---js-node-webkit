@@ -26,9 +26,9 @@ class bankjerusalem {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.86 Safari/537.36'
                 }
             };
-            if (window.navigator.platform.indexOf('Win') === -1) {
-                options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
-            }
+            // if (window.navigator.platform.indexOf('Win') === -1) {
+            //     options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
+            // }
             if (cookie !== null) {
                 options.headers.Cookie = cookie;
             }
@@ -67,9 +67,9 @@ class bankjerusalem {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.86 Safari/537.36'
                 }
             };
-            if (window.navigator.platform.indexOf('Win') === -1) {
-                options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
-            }
+            // if (window.navigator.platform.indexOf('Win') === -1) {
+            //     options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
+            // }
             if (this.cookies !== null) {
                 options.headers.Cookie = this.cookies;
             }
@@ -106,9 +106,9 @@ class bankjerusalem {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.86 Safari/537.36'
                 }
             };
-            if (window.navigator.platform.indexOf('Win') === -1) {
-                options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
-            }
+            // if (window.navigator.platform.indexOf('Win') === -1) {
+            //     options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
+            // }
             if (this.cookies !== null) {
                 options.headers.Cookie = this.cookies;
             }
@@ -145,9 +145,9 @@ class bankjerusalem {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.86 Safari/537.36'
                 }
             };
-            if (window.navigator.platform.indexOf('Win') === -1) {
-                options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
-            }
+            // if (window.navigator.platform.indexOf('Win') === -1) {
+            //     options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
+            // }
             if (this.cookies !== null) {
                 options.headers.Cookie = this.cookies;
             }
@@ -182,9 +182,9 @@ class bankjerusalem {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.86 Safari/537.36'
                 }
             }
-            if (window.navigator.platform.indexOf('Win') === -1) {
-                options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
-            }
+            // if (window.navigator.platform.indexOf('Win') === -1) {
+            //     options['proxy'] = 'http://' + usernameProxy + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225';
+            // }
             if (cookie !== null) {
                 options.headers.Cookie = cookie;
             }

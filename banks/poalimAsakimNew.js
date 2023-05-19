@@ -2,11 +2,13 @@ all.banks.accounts.poalimAsakimNew = function () {
     var poalimAsakimNew = {};
     poalimAsakimNew.TRANS_DAY_TO_RUN_MAX_FOR_OLD_SITE = 363;
     poalimAsakimNew.newAcc = true;
+    poalimAsakimNew.deviceId = null;
     poalimAsakimNew.newAccPath = "biz";
     poalimAsakimNew.imageScale = 0.2;
+    poalimAsakimNew.loginTimes = 0;
     poalimAsakimNew.haltAndWaitForReload = false;
     poalimAsakimNew.numberOfOperations = 0;
-    poalimAsakimNew.numberOfOperationsChecks = 30;
+    poalimAsakimNew.numberOfOperationsChecks = 10;
     poalimAsakimNew.numOfAccForRenewLogin = 10;
     poalimAsakimNew.numOfAccForRenewLoginOsh = 10;
     poalimAsakimNew.numOfAccForRenewLoginCards = 10;
@@ -17,14 +19,232 @@ all.banks.accounts.poalimAsakimNew = function () {
     poalimAsakimNew.numOfAccForRenewLoginNilvim = 10;
     poalimAsakimNew.timeLoopMiddle = 0;
     poalimAsakimNew.listOfChecks = [];
+    poalimAsakimNew.cookies = {};
     poalimAsakimNew.loginRenewFun = false;
     poalimAsakimNew.middleOfWork = false;
     poalimAsakimNew.BankNumber = null;
+    poalimAsakimNew.organization = null;
+    poalimAsakimNew.cookie = '';
     poalimAsakimNew.intervalXHRKeepProxySession = null;
     poalimAsakimNew.counterAccWithChecksSender = 0;
+    poalimAsakimNew.generalReq = function (options) {
+        return new Promise((resolve, reject) => {
+            monitorActivityClass.setIntervalActivity();
+            writeLog("poalimAsakimNew: " + options.uri);
+            if (!options.json) {
+                options.json = false;
+            }
+            options.followRedirect = false;
+            options.headers = Object.assign(options.headers || {},
+                {
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+                    Cookie: poalimAsakimNew.cookie
+                }
+            );
+            // if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected && !all.banks.openBankPage) {
+            //     // writeLog("proxy: True");
+            //     options['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
+            // } else {
+            //     // writeLog("proxy: False");
+            // }
+
+            // if (options.uri.includes('verify')) {
+            //     console.log('poalimAsakimNew.cookie', poalimAsakimNew.cookie)
+            //     // debugger
+            // }
+            senderReq.sendersServer(options, (error, response, data) => {
+                if (!response && error) {
+                    writeLog("poalimAsakim: " + options.uri + " error: " + error);
+                    if (options.uri.includes('ServerServices/landing-page')) {
+                        poalimAsakimNew.loginSkipOTP();
+                    } else {
+                        all.banks.accounts.poalimAsakimNew.login();
+                    }
+                    return;
+                }
+                if (error) {
+                    writeLog("poalimAsakimNew res: " + options.uri + " error: " + error + " data: " + data + " statusCode: " + response.statusCode);
+                } else {
+                    writeLog("poalimAsakimNew res: " + options.uri + " error: " + error + " statusCode: " + response.statusCode);
+                }
+
+                if (!error && response.statusCode < 400 && Array.isArray(response.headers["set-cookie"])) {
+                    const newCookies = response.headers["set-cookie"]
+                        .reduce((acmltr, ck) => {
+                            const namevalPart = ck.split(";")[0];
+                            const eqInx = namevalPart.indexOf("=");
+                            acmltr[namevalPart.slice(0, eqInx)] = namevalPart.slice(eqInx + 1);
+                            if (namevalPart.slice(0, eqInx) === "csrfcookie") {
+                                window.csrfcookie = namevalPart.slice(eqInx + 1);
+                            }
+                            if ((namevalPart.slice(0, eqInx) === 'XSRF-TOKEN' || namevalPart.slice(0, eqInx) === 'token')) {
+                                poalimAsakimNew.xsrfToken = namevalPart.slice(eqInx + 1);
+                            }
+                            // poalimAsakimNew.cookie = namevalPart.slice(0, eqInx) + "=" + namevalPart.slice(eqInx + 1) + ";";
+
+                            return acmltr;
+                        }, {});
+                    // debugger
+                    Object.assign(poalimAsakimNew.cookies, newCookies);
+                    // debugger
+                    // console.log(poalimAsakimNew.cookies);
+                    poalimAsakimNew.cookie = '';
+                    for (const property in poalimAsakimNew.cookies) {
+                        // if (property === 'SMSESSION' && !poalimAsakimNew.middleOfWork) {
+                        //     window.SMSESSION = poalimAsakimNew.cookies[property];
+                        // }
+
+                        if (poalimAsakimNew.cookies[property] === 'deleted' || (
+                            property === 'JSESSIONID' &&
+                            options.uri.includes('authenticate/init')
+                        )) {
+                            delete poalimAsakimNew.cookies[property];
+                        } else {
+                            poalimAsakimNew.cookie += property + '=' + poalimAsakimNew.cookies[property] + ';';
+                        }
+                    }
+                    if (window.mi6Cookie) {
+                        poalimAsakimNew.cookie += window.mi6Cookie;
+                    }
+                    // if (options.uri.includes('authenticate/init')) {
+                    //     console.log('poalimAsakimNew.cookies', poalimAsakimNew.cookies)
+                    //     // debugger
+                    // }
+                    // if (window.csrfcookie && poalimAsakimNew.middleOfWork) {
+                    //     poalimAsakimNew.cookie += window.csrfcookie;
+                    // }
+                    // if (window.SMSESSION && poalimAsakimNew.middleOfWork) {
+                    //     poalimAsakimNew.cookie += window.SMSESSION;
+                    // }
+                }
+
+                if (response.statusCode === 302 &&
+                    ((options.uri.includes('ServerServices/landing-page?action'))
+                        ||
+                        (response.headers.location.includes('ng-portals/logoff') || (response.headers.location.includes('exit.html') && !options.uri.includes('ng-portals/logoff'))))
+                ) {
+                    if (options.uri.includes('ServerServices/landing-page?action')) {
+                        writeLog('---302 after OTP process - Not! Moty Eyal ---- log out');
+                        myEmitterLogs(5, 'The customer must update a password');
+                        return;
+                    } else {
+                        if ((all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A4' || all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A5')) {
+                            window.mi6Cookie = null;
+                            window.csrfcookie = null;
+                            poalimAsakimNew.cookie = '';
+                            for (const property in poalimAsakimNew.cookies) {
+                                if (property !== 'dtCookie' &&
+                                    property !== 'dtPC' &&
+                                    property !== 'dtSa' &&
+                                    property !== 'incap_ses_457_2405218' &&
+                                    property !== 'lbinfobiz2' &&
+                                    property !== 'nlbi_2405218' &&
+                                    property !== 'rxVisitor' &&
+                                    property !== 'rxvt' &&
+                                    property !== 'visid_incap_2405218') {
+                                    delete poalimAsakimNew.cookies[property];
+                                }
+                            }
+                            poalimAsakimNew.xsrfToken = null;
+                            poalimAsakimNew.deviceId = null;
+                            poalimAsakimNew.timeFullLogin = new Date();
+                            all.banks.core.services.removingCookie(false, function () {
+                                all.banks.core.main.changeIpV4(false).then(function () {
+                                    all.banks.accounts.poalimAsakimNew.login();
+                                });
+                            });
+                            return;
+                        }
+                    }
+
+                } else {
+                    if (response.statusCode === 403) {
+                        if ((
+                            (all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A4' || all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A5')
+                            ||
+                            (!poalimAsakimNew.middleOfWork)
+                        )) {
+                            if (!poalimAsakimNew.middleOfWork) {
+                                writeLog('---403 in first login process ----  start renew login from zero');
+                            } else {
+                                writeLog('---403 at middleOfWork login process - Moty Eyal ---- start renew login from zero');
+                            }
+
+                            window.mi6Cookie = null;
+                            window.csrfcookie = null;
+                            poalimAsakimNew.cookie = '';
+                            for (const property in poalimAsakimNew.cookies) {
+                                if (property !== 'dtCookie' &&
+                                    property !== 'dtPC' &&
+                                    property !== 'dtSa' &&
+                                    property !== 'incap_ses_457_2405218' &&
+                                    property !== 'lbinfobiz2' &&
+                                    property !== 'nlbi_2405218' &&
+                                    property !== 'rxVisitor' &&
+                                    property !== 'rxvt' &&
+                                    property !== 'visid_incap_2405218') {
+                                    delete poalimAsakimNew.cookies[property];
+                                }
+                            }
+                            poalimAsakimNew.xsrfToken = null;
+                            poalimAsakimNew.deviceId = null;
+                            poalimAsakimNew.timeFullLogin = new Date();
+                            all.banks.core.services.removingCookie(false, function () {
+                                all.banks.core.main.changeIpV4(false).then(function () {
+                                    all.banks.accounts.poalimAsakimNew.login();
+                                });
+                            });
+                            return;
+                        } else {
+                            writeLog('---403 at middleOfWork login process - Not! Moty Eyal ---- log out');
+                            // debugger
+                            myEmitterLogs(9);
+                            return;
+                        }
+                    }
+                }
+                console.log("poalimAsakimNew: " + options.uri, response.statusCode);
+                resolve([error, response, data]);
+            });
+        });
+    };
+    poalimAsakimNew.getScript = function (src) {
+        return new Promise((resolve, reject) => {
+            $.getScript(src)
+                .done(function (script, textStatus) {
+                    resolve(true)
+                })
+                .fail(function (jqxhr, settings, exception) {
+                    resolve(true)
+                });
+        })
+    }
     poalimAsakimNew.login = async function (sendOtp) {
-        writeLog('---Poalim asakim parallel----');
+        // if (!poalimAsakimNew.IpAddress) {
+        //     const response = await fetch("http://icanhazip.com");
+        //     const ipAddrress = await response.text();
+        //     poalimAsakimNew.IpAddress = ipAddrress.replace(/\s/g, "");
+        //     poalimAsakimNew.cookie = '';
+        // }
+        if (/^linux/.test(process.platform)) {
+            exec("find ~/.cache/ -type f -delete", (err, stdout, stderr) => {
+                exec('sudo sh -c "sync; echo 1 > /proc/sys/vm/drop_caches"', (err, stdout, stderr) => {
+                    exec('sudo sh -c "sync; echo 2 > /proc/sys/vm/drop_caches"', (err, stdout, stderr) => {
+                        exec('sudo sh -c "sync; echo 3 > /proc/sys/vm/drop_caches"', (err, stdout, stderr) => {
+
+                        });
+                    });
+                });
+            });
+        }
         //setProxy().then(() => {
+        poalimAsakimNew.loginTimes += 1;
+        if (poalimAsakimNew.loginTimes === 1) {
+            writeLog('---Poalim asakim parallel----');
+            poalimAsakimNew.timeFullLogin = new Date();
+        } else {
+            writeLog('---Poalim asakim parallel start renew----');
+        }
         poalimAsakimNew.accNum = 0;
         poalimAsakimNew.indexPage = 1;
         poalimAsakimNew.totalPeulotDays = 0;
@@ -33,6 +253,7 @@ all.banks.accounts.poalimAsakimNew = function () {
         poalimAsakimNew.varGlobal = {};
         poalimAsakimNew.loggedInOnce = false;
         if (poalimAsakimNew.middleOfWork || poalimAsakimNew.timeLoopMiddle > 0) {
+            poalimAsakimNew.cookie = '';
             poalimAsakimNew.passOtpNew = null;
             all.banks.accountDetails.bank.BankNumber = poalimAsakimNew.BankNumber;
         }
@@ -79,6 +300,13 @@ all.banks.accounts.poalimAsakimNew = function () {
                 }
                 return ret;
             };
+            // win.cookies.getAll({}, function (cool) {
+            //     cool.forEach(function (v) {
+            //         if (!v.domain.includes('bizibox')) {
+            //             poalimAsakimNew.cookie = v.name + "=" + v.value + ";";
+            //         }
+            //     })
+            // });
             eval(function (p, a, c, k, e, d) {
                 e = function (c) {
                     return (c < a ? '' : e(parseInt(c / a))) + ((c = c % a) > 35 ? String.fromCharCode(c + 29) : c.toString(36))
@@ -121,277 +349,459 @@ all.banks.accounts.poalimAsakimNew = function () {
                 while (c--) if (k[c]) p = p.replace(new RegExp('\\b' + e(c) + '\\b', 'g'), k[c]);
                 return p
             }('8 q={1:"C-1=",e:t(z){8 v=\'\',a,b,c,l,m,n,o,i=0;z=q.y(z);D(i<z.w){a=z.9(i++);b=z.9(i++);c=z.9(i++);l=a>>2;m=((a&3)<<4)|(b>>4);n=((b&E)<<2)|(c>>6);o=c&d;f(x(b))n=o=A;p f(x(c))o=A;v=v+h.1.j(l)+h.1.j(m)+h.1.j(n)+h.1.j(o)}B v},y:t(s){s=s.F(/\\r\\n/g,\'\\n\');8 c,u=\'\';G(8 n=0;n<s.w;n++)f((c=s.9(n))<k)u+=5.7(c);p f((c>H)&&(c<I)){u+=5.7((c>>6)|J);u+=5.7((c&d)|k)}p{u+=5.7((c>>K)|L);u+=5.7(((c>>6)&d)|k);u+=5.7((c&d)|k)}B u}};', 48, 48, '|_||||String||fromCharCode|var|charCodeAt||||63||if||this||charAt|128|||||else|Base64_5|||function|||length|isNaN|||64|return|ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789|while|15|replace|for|127|2048|192|12|224'.split('|'), 0, {}));
-            vsenc.setCookie("G3CmE", "", null);
-
+            // vsenc.setCookie("G3CmE", "", null);
+            // if (poalimAsakimNew.loginTimes === 1) {
+            //
+            // }
             all.banks.accountDetails.bank.username = all.banks.accountDetails.bank.username.slice(0, 14);
             all.banks.accountDetails.bank.password = all.banks.accountDetails.bank.password.slice(0, 14);
+            // if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected && !all.banks.openBankPage) {
+            //     writeLog("proxy: True");
+            // } else {
+            //     writeLog("proxy: False");
+            // }
+            // console.log('document.cookie: ', document.cookie);
+            if (!poalimAsakimNew.deviceId && poalimAsakimNew.loginTimes === 1) {
+                writeLog('Req data for create cookies of DeviceId');
 
-            $.get('https://biz2.bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=getLogonPageIski').done(function (contents) {
-                var contents = all.banks.core.services.parseHtml(contents);
-                var input = contents.find("input[name='organization']");
-                if (input.length === 0 || !input.val()) {
-                    myEmitterLogs(9);
+                let [error_authenticate, response_authenticate, data_authenticate] = await poalimAsakimNew.generalReq({
+                    uri: 'https://biz2.bankhapoalim.co.il/ng-portals/auth/he/biz-login/authenticate',
+                    family: 4,
+                    timeout: 10000,
+                    method: "GET"
+                });
+                if (data_authenticate) {
+                    const htmlCode = all.banks.core.services.parseHtml(data_authenticate);
+                    const scriptData = htmlCode.find('script[data-dtconfig]');
+                    if (scriptData && scriptData.length) {
+                        const src = $(scriptData).attr('src');
+                        if (src) {
+                            await poalimAsakimNew.getScript('https://biz2.bankhapoalim.co.il' + src);
+                        }
+                    }
+                    const ck = document.cookie;
+                    const namevalPart = ck.split(";");
+                    let acmltr = {};
+                    namevalPart.forEach(it => {
+                        const eqInx = it.indexOf("=");
+                        acmltr[it.slice(0, eqInx).trim()] = it.slice(eqInx + 1).trim();
+                    });
+                    Object.assign(poalimAsakimNew.cookies, acmltr);
+                    writeLog('Setup data for create cookies of DeviceId');
+                    const scriptDataModule = htmlCode.find('script[type="module"]');
+                    if (scriptDataModule && scriptDataModule.length) {
+                        let mainSrc = null;
+                        $(scriptDataModule).each(function (index) {
+                            const src = $(this).attr('src');
+                            if (src.includes('main')) {
+                                mainSrc = src;
+                            }
+                        });
+                        if (mainSrc) {
+                            let [error_mainSrc, response_mainSrc, data_mainSrc] = await poalimAsakimNew.generalReq({
+                                uri: 'https://biz2.bankhapoalim.co.il/ng-portals/auth/he/' + mainSrc,
+                                family: 4,
+                                timeout: 10000,
+                                method: "GET"
+                            });
+                            if (data_mainSrc) {
+                                try {
+                                    poalimAsakimNew.organization = data_mainSrc.split('const G="')[1].split('"')[0];
+                                } catch (e) {
+                                    poalimAsakimNew.organization = "106402333";
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (!poalimAsakimNew.organization) {
+                poalimAsakimNew.organization = "106402333";
+                // writeLog('organization not found');
+                // myEmitterLogs(9);
+                // return;
+            }
+            const [error2, response2, responsePage] = await poalimAsakimNew.generalReq({
+                uri: "https://biz2.bankhapoalim.co.il/CAClientPages/new_images/JSP_BANK/vsenc.jsp?aaa=" + Math.random(),
+                family: 4,
+                timeout: 10000,
+                method: "GET"
+            });
+            if (error2 || !responsePage) {
+                writeLog('vsenc.jsp error' + error2);
+                // debugger
+                myEmitterLogs(9, error2);
+                return;
+            }
+            try {
+                var G3CmE = responsePage.split('"G3CmE",')[1].split(",")[0].replace(/"/g, "").trim();
+                if (!G3CmE) {
+                    writeLog('G3CmE not found');
+                    throw ("Failed to fetch G3CmE value");
+                }
+                window.mi6Cookie = 'G3CmE=' + G3CmE + ';';
+                if (window.mi6Cookie) {
+                    poalimAsakimNew.cookie += window.mi6Cookie;
+                }
+                // win.cookies.set({
+                //     url: "https://biz2.bankhapoalim.co.il",
+                //     name: "G3CmE",
+                //     domain: "biz2.bankhapoalim.co.il",
+                //     value: G3CmE
+                // });
+                // win.cookies.getAll({}, function (cool) {
+                //     cool.forEach(function (v) {
+                //         if (!v.domain.includes('bizibox')) {
+                //             poalimAsakimNew.cookie = v.name + "=" + v.value + ";";
+                //         }
+                //     })
+                // });
+            } catch (ex) {
+                writeLog('Error ---- ' + ex);
+                myEmitterLogs(9);
+                return;
+            }
+
+            let [error3, response3, res] = await poalimAsakimNew.generalReq({
+                uri: "https://biz2.bankhapoalim.co.il/authenticate/init",
+                family: 4,
+                timeout: 10000,
+                method: "POST",
+                body: "POST",
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                },
+                form: {
+                    'organization': poalimAsakimNew.organization,
+                    'identifier': all.banks.accountDetails.bank.username,
+                    'deviceId': poalimAsakimNew.deviceId
+                }
+            });
+
+            if (error3 || !res) {
+                writeLog('init error ' + error3);
+                myEmitterLogs(9, error3);
+                return;
+            }
+
+            // if (poalimAsakimNew.middleOfWork
+            //     && (all.banks.accountDetails.bank.token !== '88E6C85EB9144928843647E86DDDD3A4' && all.banks.accountDetails.bank.token !== '88E6C85EB9144928843647E86DDDD3A5')
+            // ) {
+            //     if (!poalimAsakimNew.deviceId) {
+            //         myEmitterLogs(9, 'Session terminate');
+            //         return;
+            //     }
+            // }
+
+            writeLog('authenticate/init res ' + res);
+            res = JSON.parse(res)
+            if (res.error == null) {
+                var guid = res.result.guid;
+                var challenge = res.result.challenge;
+                var nuTY90z = G3CmE.split('3ba782e1')[1].substring(8);
+                var enc_key = vsenc.randomString(12);
+                var enc_ret = vsenc.EncryptRSA(enc_key, nuTY90z);
+                rcx = Base64_5.e(enc_ret + vsenc.urlEncode(vsenc.vignere(all.banks.accountDetails.bank.password, enc_key)));
+                let [error4, respon, respone4] = await poalimAsakimNew.generalReq({
+                    uri: "https://biz2.bankhapoalim.co.il/authenticate/verify?lang=he",
+                    family: 4,
+                    timeout: 10000,
+                    method: "POST",
+                    body: "POST",
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                        'referer': 'https://biz2.bankhapoalim.co.il/'
+                    },
+                    form: {
+                        'identifier': all.banks.accountDetails.bank.username,
+                        'organization': poalimAsakimNew.organization,
+                        'instituteCode': poalimAsakimNew.organization,
+                        'credentials': rcx,
+                        'mfp': JSON.stringify({
+                            "VERSION": "2.1.1",
+                            "MFP": {
+                                "Browser": {
+                                    "UserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+                                    "Vendor": "Google Inc.",
+                                    "VendorSubID": "",
+                                    "BuildID": "20030107",
+                                    "CookieEnabled": true
+                                },
+                                "IEPlugins": {},
+                                "NetscapePlugins": {
+                                    "PDF Viewer": "",
+                                    "Chrome PDF Viewer": "",
+                                    "Chromium PDF Viewer": "",
+                                    "Microsoft Edge PDF Viewer": "",
+                                    "WebKit built-in PDF": ""
+                                },
+                                "Screen": {
+                                    "FullHeight": 1120,
+                                    "AvlHeight": 1024,
+                                    "FullWidth": 1792,
+                                    "AvlWidth": 1792,
+                                    "ColorDepth": 30,
+                                    "PixelDepth": 30
+                                },
+                                "System": {"Platform": "MacIntel", "systemLanguage": "en-US", "Timezone": 300}
+                            },
+                            "ExternalIP": "10.12.7.244",
+                            "MESC": {"mesc": "mi=2;cd=150;id=30;mesc=1363149;mesc=1340801"}
+                        }),
+                        'IpAddress': '10.12.7.244',
+                        'CallerID': '123456',
+                        'deviceid': poalimAsakimNew.deviceId,
+                        'executionTime': '332',
+                        'flow': '',
+                        'state': '',
+                        'Language': '',
+                        'userID': all.banks.accountDetails.bank.username,
+                        'authType': 'VERSAFE',
+                        'G3CmE': G3CmE,
+                        'bsd': '',
+                        'logintype': 'business'
+                    }
+                });
+                if (error4 || !respone4) {
+                    writeLog('authenticate/verify error ' + error4);
+                    myEmitterLogs(9, error3);
                     return;
                 }
-                all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/CAClientPages/new_images/JSP_BANK/vsenc.jsp?aaa=" + Math.random(), 'GET', null, false, false)
-                    .then(function (responsePage, state, status) {
-                        try {
-                            var G3CmE = responsePage.split('"G3CmE",')[1].split(",")[0].replace(/"/g, "").trim();
-                            if (!G3CmE) {
-                                throw new Error("Failed to fetch G3CmE value");
-                            }
-                            var mi6Cookie = 'G3CmE=' + G3CmE + ';';
-                            document.cookie = mi6Cookie;
-                            win.cookies.getAll({}, function (cool) {
-                                cool.forEach(function (v) {
-                                    document.cookie = v.name + "=" + v.value + ";";
-                                })
-                            });
-                            win.cookies.set({
-                                url: "https://biz2.bankhapoalim.co.il",
-                                name: "G3CmE",
-                                domain: "biz2.bankhapoalim.co.il",
-                                value: G3CmE
-                            });
-                        } catch (ex) {
-                            myEmitterLogs(9);
+                writeLog('authenticate/verify respone ' + respone4);
+                respone4 = JSON.parse(respone4)
+                if (respone4.error == null) {
+                    writeLog('authenticate/verify respone OK');
+
+                    // win.cookies.getAll({}, function (cool) {
+                    //     cool.forEach(function (v) {
+                    //         if (v.name == "csrfcookie") {
+                    //             window.csrfcookie = v.value;
+                    //         }
+                    //         document.cookie = v.name + "=" + v.value + ";";
+                    //     })
+                    // });
+                    // if ((respone4.flow && respone4.flow.toLowerCase() === 'authenticate' && !poalimAsakimNew.middleOfWork) || sendOtp !== undefined) {
+
+                    if (respone4.result && respone4.result.deviceID) {
+                        poalimAsakimNew.deviceId = respone4.result.deviceID;
+                    }
+                    if (respone4.state && respone4.state === "LANDPAGE") {
+                        writeLog('state is LANDPAGE - not need OTP CODE - continue');
+                        poalimAsakimNew.loginSkipOTP();
+                        return;
+                    }
+                    if ((respone4.flow && respone4.flow.toLowerCase() === 'authenticate') || sendOtp !== undefined) {
+                        if (poalimAsakimNew.middleOfWork
+                            && (all.banks.accountDetails.bank.token !== '88E6C85EB9144928843647E86DDDD3A4' && all.banks.accountDetails.bank.token !== '88E6C85EB9144928843647E86DDDD3A5')
+                        ) {
+                            writeLog('middleOfWork NOT Moty and Eyal and asked authenticate again even deviceId exist - logout and dont ask OTP again');
+                            myEmitterLogs(9, 'Session terminate');
                             return;
                         }
 
-                        var data = {
-                            'organization': input.val(),
-                            'identifier': all.banks.accountDetails.bank.username
-                        }
-                        all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/authenticate/init", 'POST', data, true, false)
-                            .then(function (res) {
-                                if (res.error == null) {
-                                    var guid = res.result.guid;
-                                    var challenge = res.result.challenge;
-                                    var nuTY90z = G3CmE.split('3ba782e1')[1].substring(8);
-                                    var enc_key = vsenc.randomString(12);
-                                    var enc_ret = vsenc.EncryptRSA(enc_key, nuTY90z);
-                                    rcx = Base64_5.e(enc_ret + vsenc.urlEncode(vsenc.vignere(all.banks.accountDetails.bank.password, enc_key)));
-                                    $.ajax({
-                                        type: "POST",
-                                        cache: false,
-                                        data: "identifier=" + all.banks.accountDetails.bank.username + "&Language=" + "" + "&bsd=" + "" + "&userID=" + all.banks.accountDetails.bank.username + "&instituteCode=" + input.val() + "&credentials=" + rcx + "&organization=" + input.val() + "&G3CmE=" + G3CmE + "&MFP=" + JSON.stringify({
-                                            "VERSION": "2.1.1",
-                                            "MFP": {
-                                                "Browser": {
-                                                    "UserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.59 Safari/537.36",
-                                                    "Vendor": "Google Inc.",
-                                                    "VendorSubID": "",
-                                                    "BuildID": "20030107",
-                                                    "CookieEnabled": true
-                                                },
-                                                "IEPlugins": {},
-                                                "NetscapePlugins": {
-                                                    "Chrome PDF Plugin": "",
-                                                    "Chrome PDF Viewer": "",
-                                                    "Native Client": "",
-                                                    "Widevine Content Decryption Module": "1.4.8.1030"
-                                                },
-                                                "Screen": {
-                                                    "FullHeight": 900,
-                                                    "AvlHeight": 807,
-                                                    "FullWidth": 1440,
-                                                    "AvlWidth": 1440,
-                                                    "ColorDepth": 24,
-                                                    "PixelDepth": 24
-                                                },
-                                                "System": {
-                                                    "Platform": "MacIntel",
-                                                    "systemLanguage": "en-US",
-                                                    "Timezone": 300
-                                                }
-                                            },
-                                            "ExternalIP": "10.12.65.50",
-                                            "MESC": {"mesc": "mi=2;cd=150;id=30;mesc=1076769;mesc=1060861"}
-                                        }) + "&IpAddress=" + "10.12.65.50" + "&CallerID=" + "123456" + "&DeviceID=" + "" + "&deviceDNA=" + JSON.stringify({
-                                            "VERSION": "2.1.1",
-                                            "MFP": {
-                                                "Browser": {
-                                                    "UserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.59 Safari/537.36",
-                                                    "Vendor": "Google Inc.",
-                                                    "VendorSubID": "",
-                                                    "BuildID": "20030107",
-                                                    "CookieEnabled": true
-                                                },
-                                                "IEPlugins": {},
-                                                "NetscapePlugins": {
-                                                    "Chrome PDF Plugin": "",
-                                                    "Chrome PDF Viewer": "",
-                                                    "Native Client": "",
-                                                    "Widevine Content Decryption Module": "1.4.8.1030"
-                                                },
-                                                "Screen": {
-                                                    "FullHeight": 900,
-                                                    "AvlHeight": 807,
-                                                    "FullWidth": 1440,
-                                                    "AvlWidth": 1440,
-                                                    "ColorDepth": 24,
-                                                    "PixelDepth": 24
-                                                },
-                                                "System": {
-                                                    "Platform": "MacIntel",
-                                                    "systemLanguage": "en-US",
-                                                    "Timezone": 300
-                                                }
-                                            },
-                                            "ExternalIP": "10.12.65.50",
-                                            "MESC": {"mesc": "mi=2;cd=150;id=30;mesc=1076769;mesc=1060861"}
-                                        }) + "&executionTime=" + "335" + "&authType=" + "VERSAFE" + "&flow=" + "" + "&state=" + "" + "&logintype=business",
-                                        xhr: (window.ActiveXObject) ?
-                                            function () {
-                                                try {
-                                                    return new window.ActiveXObject("Microsoft.XMLHTTP");
-                                                } catch (e) {
-                                                }
-                                            } : function () {
-                                                return new window.XMLHttpRequest();
-                                            },
-                                        url: "https://biz2.bankhapoalim.co.il/authenticate/verify",
-                                        success: function (respone) {
-                                            if (respone.error == null) {
-                                                win.cookies.getAll({}, function (cool) {
-                                                    cool.forEach(function (v) {
-                                                        if (v.name == "csrfcookie") {
-                                                            window.csrfcookie = v.value;
-                                                        }
-                                                        document.cookie = v.name + "=" + v.value + ";";
-                                                    })
-                                                });
-
-                                                if ((respone.flow && respone.flow.toLowerCase() === 'authenticate' && !poalimAsakimNew.middleOfWork) || sendOtp !== undefined) {
-                                                    if (respone.state === 'LOGONMOBILEOTP') {
-                                                        poalimAsakimNew.otpChannel = 'POALIM_PASS';
-                                                        waitForAndApplyCode();
-                                                    } else {
-                                                        poalimAsakimNew.otpChannel = bankNumberNum === 123 ? 'VOICE' : 'SMS';
-                                                        var data = {
-                                                            otpchannel: poalimAsakimNew.otpChannel.toLowerCase(), //"sms",
-                                                            flow: respone.flow.toLowerCase(),
-                                                            state: respone.state.toLowerCase()
-                                                        }
-                                                        poalimAsakimNew.otpChannelParams = data;
-                                                        let timeToDelaySendOTPCODE = 0;
-                                                        if (poalimAsakimNew.timeOfLogin) {
-                                                            const secondsBetweenLogin = (new Date().getTime() - poalimAsakimNew.timeOfLogin) / 1000;
-                                                            if (secondsBetweenLogin < 30) {
-                                                                timeToDelaySendOTPCODE = (30 - secondsBetweenLogin) * 1000;
-                                                            }
-                                                        }
-                                                        setTimeout(() => {
-                                                            poalimAsakimNew.timeOfLogin = new Date().getTime();
-                                                            all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/authenticate/logonotp/init", 'POST', data, true, false)
-                                                                .then(function (res) {
-                                                                    if (res.error == null || (res.error !== null && res.error.errDesc == null) || (res.error !== null && res.error.errDesc == "Internal Error")) {
-                                                                        waitForAndApplyCode();
-                                                                    } else {
-                                                                        myEmitterLogs(5);
-                                                                    }
-                                                                });
-                                                        }, timeToDelaySendOTPCODE)
-
-                                                    }
-
-                                                    function waitForAndApplyCode() {
-                                                        if (all.banks.generalVariables.isOtp) {
-                                                            $("#otp").val("");
-                                                            $("#passOtp").slideDown("fast");
-                                                            $("#sendOtp").off('click');
-                                                            $("#sendOtp").on('click', function (e) {
-                                                                e.preventDefault();
-                                                                $(this).off('click');
-                                                                poalimAsakimNew.passOtpNew = $("#otp").val();
-                                                                poalimAsakimNew.loginOTP($("#otp").val());
-                                                                $("#passOtp").fadeOut();
-                                                            })
-                                                            $("#closeOtp").off('click');
-                                                            $("#closeOtp").on('click', function (e) {
-                                                                e.preventDefault();
-                                                                $(this).off('click');
-                                                                $("#passOtp").fadeOut();
-                                                                all.banks.core.services.reloadPage();
-                                                            })
-                                                        }
-                                                        poalimAsakimNew.BankNumber = all.banks.accountDetails.bank.BankNumber;
-                                                        all.banks.accountDetails.bank.BankNumber = 12;
-                                                        all.banks.accountDetails.run_type = 999;
-                                                        poalimAsakimNew.indPoalim122 = true;
-                                                        doneLoadFrame();
-                                                    }
-
-                                                } else {
-                                                    var targ = respone.target || "";
-                                                    var expiredDate = "";
-                                                    var instituteCode = "";
-                                                    var bsd = contents.find("input[name='bsd']").val();
-                                                    if (respone.result != null) {
-                                                        if (typeof respone.result.expiredDate != "undefined") {
-                                                            expiredDate = "&expiredDate=" + respone.result.expiredDate;
-                                                            if ($("input[name='InstituteCode']").val() == 0) {
-                                                                instituteCode = '&demo';
-                                                            }
-                                                        }
-                                                    }
-                                                    if (bsd) {
-                                                        bsd = "&bsd=" + bsd;
-                                                    } else {
-                                                        bsd = "";
-                                                    }
-
-                                                    var mainframe = "";
-                                                    if (respone.state == "LANDPAGE") {
-                                                        mainframe = "&reqName=MainFrameSet";
-                                                    }
-
-                                                    var skipOtpUrl = "";
-                                                    if (targ != "") {
-                                                        skipOtpUrl = targ;
-                                                    } else {
-                                                        skipOtpUrl = "https://biz2.bankhapoalim.co.il/" + respone.flow + "/" + respone.state + "?flow=" + respone.flow + "&state=" + respone.state + expiredDate + bsd + mainframe + instituteCode;
-                                                    }
-
-                                                    poalimAsakimNew.loginSkipOTP(skipOtpUrl);
-                                                }
-                                            } else {
-                                                if (respone.state === 'LOCKED') {
-                                                    myEmitterLogs(8);
-                                                } else {
-                                                    if (poalimAsakimNew.middleOfWork) {
-                                                        all.banks.core.services.removingCookie(false, function () {
-                                                            document.cookie = '';
-                                                            nw.App.clearCache();
-                                                            all.banks.accounts.poalimAsakimNew.login(true);
-                                                        })
-                                                    } else {
-                                                        myEmitterLogs(5, " wrong user credentials: " + res.error);
-                                                        all.banks.core.services.notifyPagerDuty('wrong user credentials',
-                                                            all.banks.accountDetails.bank.token);
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    });
-
-                                } else {
-                                    if (poalimAsakimNew.middleOfWork) {
-                                        all.banks.core.services.removingCookie(false, function () {
-                                            document.cookie = '';
-                                            nw.App.clearCache();
-                                            all.banks.accounts.poalimAsakimNew.login(true);
-                                        })
-                                    } else {
-                                        myEmitterLogs(5, " wrong user credentials: " + res.error);
-                                        all.banks.core.services.notifyPagerDuty('wrong user credentials',
-                                            all.banks.accountDetails.bank.token);
-                                    }
+                        if (respone4.state === 'LOGONMOBILEOTP') {
+                            poalimAsakimNew.otpChannel = 'POALIM_PASS';
+                            waitForAndApplyCode();
+                        } else {
+                            poalimAsakimNew.otpChannel = bankNumberNum === 123 ? 'VOICE' : 'SMS';
+                            poalimAsakimNew.otpChannelParams = {
+                                otpchannel: poalimAsakimNew.otpChannel.toLowerCase(), //"sms",
+                                flow: respone4.flow.toLowerCase(),
+                                state: respone4.state.toLowerCase(),
+                                deviceId: poalimAsakimNew.deviceId
+                            };
+                            let timeToDelaySendOTPCODE = 0;
+                            if (poalimAsakimNew.timeOfLogin) {
+                                const secondsBetweenLogin = (new Date().getTime() - poalimAsakimNew.timeOfLogin) / 1000;
+                                if (secondsBetweenLogin < 30) {
+                                    timeToDelaySendOTPCODE = (30 - secondsBetweenLogin) * 1000;
                                 }
-                            });
+                            }
+                            setTimeout(() => {
+                                poalimAsakimNew.timeOfLogin = new Date().getTime();
+                                writeLog('Req otp code by authenticate/logonotp/init');
 
-                    })
-            });
+                                poalimAsakimNew.generalReq({
+                                    uri: "https://biz2.bankhapoalim.co.il/authenticate/logonotp/init",
+                                    family: 4,
+                                    timeout: 10000,
+                                    method: "POST",
+                                    body: "POST",
+                                    headers: {
+                                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                                    },
+                                    form: {
+                                        otpchannel: poalimAsakimNew.otpChannel.toLowerCase(), //"sms",
+                                        flow: respone4.flow.toLowerCase(),
+                                        state: respone4.state.toLowerCase(),
+                                        deviceId: poalimAsakimNew.deviceId
+                                    }
+                                }).then(([error5, respon5, res]) => {
+                                    if (error5) {
+                                        writeLog('authenticate/logonotp/init error' + error5);
+                                        myEmitterLogs(5);
+                                        return;
+                                    }
+                                    writeLog('authenticate/logonotp/init res' + res);
+                                    res = JSON.parse(res)
+
+                                    if (res.error == null || (res.error !== null && res.error.errDesc == null) || (res.error !== null && res.error.errDesc == "Internal Error")) {
+                                        waitForAndApplyCode();
+                                    } else {
+                                        writeLog('authenticate/logonotp/init error');
+                                        myEmitterLogs(5);
+                                    }
+                                })
+                            }, timeToDelaySendOTPCODE)
+                        }
+
+                        function waitForAndApplyCode() {
+                            if (all.banks.generalVariables.isOtp) {
+                                $("#otp").val("");
+                                $("#passOtp").slideDown("fast");
+                                $("#sendOtp").off('click');
+                                $("#sendOtp").on('click', function (e) {
+                                    e.preventDefault();
+                                    $(this).off('click');
+                                    poalimAsakimNew.passOtpNew = $("#otp").val();
+                                    poalimAsakimNew.loginOTP($("#otp").val());
+                                    $("#passOtp").fadeOut();
+                                })
+                                $("#closeOtp").off('click');
+                                $("#closeOtp").on('click', function (e) {
+                                    e.preventDefault();
+                                    $(this).off('click');
+                                    $("#passOtp").fadeOut();
+                                    all.banks.core.services.reloadPage();
+                                })
+                            }
+                            if (!poalimAsakimNew.BankNumber) {
+                                poalimAsakimNew.BankNumber = all.banks.accountDetails.bank.BankNumber;
+                            }
+                            all.banks.accountDetails.bank.BankNumber = 12;
+                            all.banks.accountDetails.run_type = 999;
+                            poalimAsakimNew.indPoalim122 = true;
+                            doneLoadFrame();
+                        }
+
+                    } else {
+                        var targ = respone4.target || "";
+                        var expiredDate = "";
+                        var instituteCode = "";
+                        var bsd = contents.find("input[name='bsd']").val();
+                        if (respone4.result != null) {
+                            if (typeof respone4.result.expiredDate != "undefined") {
+                                expiredDate = "&expiredDate=" + respone4.result.expiredDate;
+                                if ($("input[name='InstituteCode']").val() == 0) {
+                                    instituteCode = '&demo';
+                                }
+                            }
+                        }
+                        if (bsd) {
+                            bsd = "&bsd=" + bsd;
+                        } else {
+                            bsd = "";
+                        }
+
+                        var mainframe = "";
+                        if (respone4.state == "LANDPAGE") {
+                            mainframe = "&reqName=MainFrameSet";
+                        }
+
+                        var skipOtpUrl = "";
+                        if (targ != "") {
+                            skipOtpUrl = targ;
+                        } else {
+                            skipOtpUrl = "https://biz2.bankhapoalim.co.il/" + respone4.flow + "/" + respone4.state + "?flow=" + respone4.flow + "&state=" + respone4.state + expiredDate + bsd + mainframe + instituteCode;
+                        }
+
+                        poalimAsakimNew.loginSkipOTP(skipOtpUrl);
+                    }
+                } else {
+                    if (respone4.state === 'LOCKED') {
+                        writeLog('authenticate/verify state LOCKED');
+                        myEmitterLogs(8);
+                    } else {
+                        if (respone4.error && respone4.error.errDesc.includes('Failure')) {
+                            writeLog('authenticate/verify error Failure' + respone4.error.errDesc);
+                            myEmitterLogs(5);
+                        } else {
+                            myEmitterLogs(9, " wrong user credentials: " + res.error);
+                            all.banks.core.services.notifyPagerDuty('wrong user credentials',
+                                all.banks.accountDetails.bank.token);
+                        }
+                        // if (poalimAsakimNew.middleOfWork && (all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A4' || all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A5')) {
+                        //     writeLog('authenticate/verify ERROR Moty eyal try new login');
+                        //     window.mi6Cookie = null;
+                        //     window.csrfcookie = null;
+                        //     poalimAsakimNew.cookie = '';
+                        //     for (const property in poalimAsakimNew.cookies) {
+                        //         if (property !== 'dtCookie' &&
+                        //             property !== 'dtPC' &&
+                        //             property !== 'dtSa' &&
+                        //             property !== 'incap_ses_457_2405218' &&
+                        //             property !== 'lbinfobiz2' &&
+                        //             property !== 'nlbi_2405218' &&
+                        //             property !== 'rxVisitor' &&
+                        //             property !== 'rxvt' &&
+                        //             property !== 'visid_incap_2405218') {
+                        //             delete poalimAsakimNew.cookies[property];
+                        //         }
+                        //     }
+                        //     poalimAsakimNew.xsrfToken = null;
+                        //     poalimAsakimNew.deviceId = null;
+                        //     poalimAsakimNew.timeFullLogin = new Date();
+                        //     all.banks.core.services.removingCookie(false, function () {
+                        //         all.banks.core.main.changeIpV4(false).then(function () {
+                        //             all.banks.accounts.poalimAsakimNew.login();
+                        //         });
+                        //     });
+                        // } else {
+                        //     if (respone4.error && respone4.error.errDesc.includes('Failure')) {
+                        //         writeLog('authenticate/verify error Failure' + respone4.error.errDesc);
+                        //         myEmitterLogs(5);
+                        //     } else {
+                        //         myEmitterLogs(9, " wrong user credentials: " + res.error);
+                        //         all.banks.core.services.notifyPagerDuty('wrong user credentials',
+                        //             all.banks.accountDetails.bank.token);
+                        //     }
+                        // }
+                    }
+                }
+            } else {
+                if (poalimAsakimNew.middleOfWork && (all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A4' || all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A5')) {
+                    writeLog('authenticate/init ERROR Moty eyal try new login');
+                    window.mi6Cookie = null;
+                    window.csrfcookie = null;
+                    poalimAsakimNew.cookie = '';
+                    for (const property in poalimAsakimNew.cookies) {
+                        if (property !== 'dtCookie' &&
+                            property !== 'dtPC' &&
+                            property !== 'dtSa' &&
+                            property !== 'incap_ses_457_2405218' &&
+                            property !== 'lbinfobiz2' &&
+                            property !== 'nlbi_2405218' &&
+                            property !== 'rxVisitor' &&
+                            property !== 'rxvt' &&
+                            property !== 'visid_incap_2405218') {
+                            delete poalimAsakimNew.cookies[property];
+                        }
+                    }
+                    poalimAsakimNew.xsrfToken = null;
+                    poalimAsakimNew.deviceId = null;
+                    poalimAsakimNew.timeFullLogin = new Date();
+                    all.banks.core.services.removingCookie(false, function () {
+                        all.banks.core.main.changeIpV4(false).then(function () {
+                            all.banks.accounts.poalimAsakimNew.login();
+                        });
+                    });
+                } else {
+                    myEmitterLogs(9, " wrong user credentials: " + res.error);
+                    all.banks.core.services.notifyPagerDuty('wrong user credentials',
+                        all.banks.accountDetails.bank.token);
+                }
+            }
+
 
             function doneLoadFrame() {
                 try {
@@ -399,8 +809,11 @@ all.banks.accounts.poalimAsakimNew = function () {
 
                     function checkFormValues2() {
                         timeLoop += 1;
+                        writeLog('Send Req token_getotp');
                         all.banks.core.services.tokenGetotp()
                             .then(function (response) {
+                                writeLog('Res token_getotp response: ' + response);
+
                                 if (parseFloat(response) !== 0 && response !== "") {
                                     var dataRes = response.toString();
                                     if (dataRes.length > 0 && dataRes.length < 5) {
@@ -408,24 +821,29 @@ all.banks.accounts.poalimAsakimNew = function () {
                                     }
                                     poalimAsakimNew.timeLoopMiddle = 0;
                                     poalimAsakimNew.passOtpNew = dataRes;
+                                    writeLog('Res token_getotp response OK ' + dataRes);
                                     poalimAsakimNew.loginOTP(dataRes);
                                 } else {
                                     console.log('Still Not get code, timeLoop: ', timeLoop, poalimAsakimNew.otpChannel)
+                                    writeLog('Still Not get code, timeLoop: ' + timeLoop + ' - ' + poalimAsakimNew.otpChannel);
+
 
 //								if ((timeLoop > 60) && !all.banks.generalVariables.isOtp) {
 //								if ((timeLoop > 90)) {
-                                    if ((timeLoop > 150)) {
+                                    if ((timeLoop > 90)) {
                                         myEmitterLogs(38, "5 minute passed");
 //									myEmitterLogs(5, "3 minute passed");
                                     } else if (!poalimAsakimNew.passOtpNew || poalimAsakimNew.passOtpNew.length === 0) {
-                                        if (timeLoop === 50 || timeLoop === 100) {
-                                            poalimAsakimNew.timeLoopMiddle = timeLoop;
-                                            all.banks.accounts.poalimAsakimNew.renewLogin(false).then(() => {
-
-                                            });
-                                        } else {
-                                            setTimeout(checkFormValues2, 2000);
-                                        }
+                                        setTimeout(checkFormValues2, 2000);
+                                        // if (timeLoop === 50 || timeLoop === 100) {
+                                        //     writeLog('timeLoop: ' + timeLoop + ' - renewLogin');
+                                        //     poalimAsakimNew.timeLoopMiddle = timeLoop;
+                                        //     all.banks.accounts.poalimAsakimNew.renewLogin(false).then(() => {
+                                        //
+                                        //     });
+                                        // } else {
+                                        //     setTimeout(checkFormValues2, 2000);
+                                        // }
                                     }
                                 }
                             }).fail(function () {
@@ -433,19 +851,21 @@ all.banks.accounts.poalimAsakimNew = function () {
 //							if ((timeLoop > 60) && !all.banks.generalVariables.isOtp) {
 //							if ((timeLoop > 90)) {
                             console.log('Still Not get code, timeLoop: ', timeLoop, poalimAsakimNew.otpChannel)
+                            writeLog('token_getotp error');
 
-                            if ((timeLoop > 150)) {
+                            if ((timeLoop > 90)) {
                                 myEmitterLogs(38, "5 minute passed");
 //									myEmitterLogs(5, "3 minute passed");
                             } else if (!poalimAsakimNew.passOtpNew || poalimAsakimNew.passOtpNew.length === 0) {
-                                if (timeLoop === 50 || timeLoop === 100) {
-                                    poalimAsakimNew.timeLoopMiddle = timeLoop;
-                                    all.banks.accounts.poalimAsakimNew.renewLogin(false).then(() => {
-
-                                    });
-                                } else {
-                                    setTimeout(checkFormValues2, 2000);
-                                }
+                                setTimeout(checkFormValues2, 2000);
+                                // if (timeLoop === 50 || timeLoop === 100) {
+                                //     poalimAsakimNew.timeLoopMiddle = timeLoop;
+                                //     all.banks.accounts.poalimAsakimNew.renewLogin(false).then(() => {
+                                //
+                                //     });
+                                // } else {
+                                //     setTimeout(checkFormValues2, 2000);
+                                // }
                             }
                         })
                     }
@@ -473,7 +893,7 @@ all.banks.accounts.poalimAsakimNew = function () {
             $.get("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=isSessionOn&ksa=no&show=CALL_TO_UPDATE&u=i&dtcs=242&pSubMenu=Shekel&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=275574565232972399&wScr=1920&hScr=1080&tcfo=" + new Date().getTime() + "&mmx=2&qwrt=" + poalimAsakimNew.varGlobal.qwrt + "&dtcdb=242&menuTranName=HomePagePoalim");
         }, 20000);
     }
-    poalimAsakimNew.loginOTP = function (pass, cb) {
+    poalimAsakimNew.loginOTP = async function (pass, cb) {
         if (all.banks.generalVariables.isOtp) {
             $("#passOtp").fadeOut();
         }
@@ -484,6 +904,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                 csrffield: window.csrfcookie,
                 flow: 'authenticate',
                 ppcode: pass,
+                deviceId: poalimAsakimNew.deviceId,
                 mfp: JSON.stringify({
                     "Browser": {
                         "UserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.59 Safari/537.36",
@@ -520,781 +941,318 @@ all.banks.accounts.poalimAsakimNew = function () {
                 state: 'logonotp',
                 csrffield: window.csrfcookie,
                 flow: 'authenticate',
-                otp: pass
+                otp: pass,
+                deviceId: poalimAsakimNew.deviceId,
+                mfp: JSON.stringify({
+                    "VERSION": "2.1.1",
+                    "MFP": {
+                        "Browser": {
+                            "UserAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+                            "Vendor": "Google Inc.",
+                            "VendorSubID": "",
+                            "BuildID": "20030107",
+                            "CookieEnabled": true
+                        },
+                        "IEPlugins": {},
+                        "NetscapePlugins": {
+                            "PDF Viewer": "",
+                            "Chrome PDF Viewer": "",
+                            "Chromium PDF Viewer": "",
+                            "Microsoft Edge PDF Viewer": "",
+                            "WebKit built-in PDF": ""
+                        },
+                        "Screen": {
+                            "FullHeight": 1120,
+                            "AvlHeight": 1024,
+                            "FullWidth": 1792,
+                            "AvlWidth": 1792,
+                            "ColorDepth": 30,
+                            "PixelDepth": 30
+                        },
+                        "System": {"Platform": "MacIntel", "systemLanguage": "en-US", "Timezone": 300}
+                    },
+                    "ExternalIP": "",
+                    "MESC": {"mesc": "mi=2;cd=150;id=30;mesc=1200806;mesc=1319336"}
+                })
             };
             var url = 'https://biz2.bankhapoalim.co.il/authenticate/logonotp/verify';
         }
         writeLog('OTP code: ' + pass);
-        all.banks.core.services.httpReq(url, 'POST', data, true, false)
-            .then(function (res, state, status) {
-                console.log('res is: %o', res);
-                if (status.getResponseHeader('Content-Type').includes('json') && res["error"] == null) {
-                    myEmitterLogs(28, 'Collect accounts dropdown');
+        writeLog('Send authenticate/logonotp/verify OTPCODE TO POALIM');
 
-                    all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/ng-portals/biz/he/homepage", 'GET', null, false, false)
-                        .then(function (data, state, status, responseUrl) {
+        let [error, response, res] = await poalimAsakimNew.generalReq({
+            uri: url,
+            family: 4,
+            timeout: 10000,
+            method: "POST",
+            body: "POST",
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+            },
+            form: data
+        });
+        writeLog('Res authenticate/logonotp/verify OTPCODE TO POALIM ' + res);
 
+        if (res) {
+            res = JSON.parse(res);
+        }
+        if (error || !res) {
+            writeLog('error authenticate/logonotp/verify OTPCODE TO POALIM ' + error);
 
-                            if (responseUrl && responseUrl.includes('/mcp/start?flow=mcp&state=start')) {
-                                myEmitterLogs(6);
-                                return;
-                            }
-                            var data = all.banks.core.services.parseHtml(data);
-                            var isNew = data.find("#main");
-                            var shouldUseNewSite = isNew.length || (responseUrl &&
-                                (responseUrl.includes('ng-portals/biz/he/homepage')
-                                    || responseUrl.includes('ng-portals-bt/biz/he/homepage')));
-
-                            shouldUseNewSite = true;
-
-//					if (all.banks.spiderConfig.forceUseNewPoalimAsakimSite === true || shouldUseNewSite) {
-
-                            function setXsrfTokenValueAndContinue(value) {
-                                if (value && value.value) {
-                                    value = value.value;
-                                    poalimAsakimNew.xsrfToken = value;
-                                }
-
-                                win.cookies.onChanged.addListener((changeInfo) => {
-                                    if (!changeInfo.removed && (changeInfo.cookie.name === 'XSRF-TOKEN' || changeInfo.cookie.name === 'token')) {
-                                        //                                                                writeLog(`Updating xsrf-token ${poalimAsakim.xsrfToken} => ${changeInfo.cookie.value}`);
-                                        poalimAsakimNew.xsrfToken = changeInfo.cookie.value;
-                                    }
-                                });
-
-                                if (!all.banks.openBankPage) {
-                                    $('#filecontainerlogin').attr('src', '');
-                                    $('#filecontainerlogin').attr('src', '');
-                                    poalimAsakimNew.newAcc = true;
-                                    if (poalimAsakimNew.middleOfWork) {
-                                        poalimAsakimNew.newAcc = true;
-                                        poalimAsakimNew.middleOfWork = false;
-                                    } else {
-                                        all.banks.accounts.poalimAsakimNew.loadAccDDNew();
-                                    }
-                                } else {
-                                    all.banks.core.services.openBankPage("https://biz2.bankhapoalim.co.il/ng-portals/biz/he/homepage");
-                                }
-
-                            }
-
-
-                            all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/ServerServices/landing-page?action=init&lang=he", 'GET', null, false, false)
-                                .then(function (data, state, status, responseUrl) {
-                                    all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/ng-portals/landing-page/0?lang=he", 'GET', null, false, false)
-                                        .then(function (data, state, status, responseUrl) {
-                                            if (shouldUseNewSite) {
-                                                win.cookies.get({
-                                                    url: 'https://biz2.bankhapoalim.co.il',
-                                                    name: 'XSRF-TOKEN'
-                                                }, function (v) {
-                                                    if (!v) {
-                                                        win.cookies.get({
-                                                            url: 'https://biz2.bankhapoalim.co.il',
-                                                            name: 'token'
-                                                        }, function (v0) {
-                                                            setXsrfTokenValueAndContinue(v0);
-                                                        });
-                                                    } else {
-                                                        setXsrfTokenValueAndContinue(v);
-                                                    }
-                                                });
-                                            } else {
-                                                win.cookies.get({
-                                                    url: 'https://biz2.bankhapoalim.co.il',
-                                                    name: 'token'
-                                                }, function (v) {
-                                                    setXsrfTokenValueAndContinue(v);
-                                                });
-                                            }
-                                        })
-                                })
-
-
-//                                 if (shouldUseNewSite) {
-//                                     win.cookies.get({
-//                                         url: 'https://biz2.bankhapoalim.co.il',
-//                                         name: 'XSRF-TOKEN'
-//                                     }, function (v) {
-//                                         poalimAsakimNew.xsrfToken = v.value;
-//
-//                                         win.cookies.onChanged.addListener((changeInfo) => {
-//                                             if (!changeInfo.removed && changeInfo.cookie.name === 'XSRF-TOKEN') {
-// //										writeLog(`Updating xsrf-token ${poalimAsakimNew.xsrfToken} => ${changeInfo.cookie.value}`);
-//                                                 poalimAsakimNew.xsrfToken = changeInfo.cookie.value;
-//                                             }
-//                                         });
-//
-//                                         $('#filecontainerlogin').attr('src', '');
-//                                         poalimAsakimNew.newAcc = true;
-//                                         if (poalimAsakimNew.middleOfWork) {
-//                                             poalimAsakimNew.middleOfWork = false;
-//                                         } else {
-//                                             all.banks.accounts.poalimAsakimNew.loadAccDDNew();
-//                                         }
-//                                     });
-//                                 }
-//                                 else {
-//                                     win.cookies.get({
-//                                         url: 'https://biz2.bankhapoalim.co.il',
-//                                         name: 'token'
-//                                     }, function (v) {
-//                                         poalimAsakimNew.xsrfToken = v.value;
-//
-//                                         win.cookies.onChanged.addListener((changeInfo) => {
-//                                             if (!changeInfo.removed && changeInfo.cookie.name === 'XSRF-TOKEN') {
-// //										writeLog(`Updating xsrf-token ${poalimAsakimNew.xsrfToken} => ${changeInfo.cookie.value}`);
-//                                                 poalimAsakimNew.xsrfToken = changeInfo.cookie.value;
-//                                             }
-//                                         });
-//
-//                                         $('#filecontainerlogin').attr('src', '');
-//                                         poalimAsakimNew.newAcc = true;
-//                                         if (poalimAsakimNew.middleOfWork) {
-//                                             poalimAsakimNew.middleOfWork = false;
-//                                         } else {
-//                                             all.banks.accounts.poalimAsakimNew.loadAccDDNew();
-//                                         }
-//                                     });
-//                                 }
-//
-
-//                             } else {
-//                                 all.banks.core.services.openBankPage("https://biz2.bankhapoalim.co.il/biz-portalserver/biz_HomePage");
-// 							all.banks.core.services.openBankPage(all.banks.spiderConfig.forceUseNewPoalimAsakimSite === true
-//                                                            ? "https://biz2.bankhapoalim.co.il/biz-portalserver/biz_HomePage"
-//                                                            : (responseUrl || "https://biz2.bankhapoalim.co.il/biz-portalserver/biz_HomePage"));
-//                             }
-//					}
-//					else {
-//						if (!all.banks.openBankPage) {
-//							$('#filecontainerlogin').attr('src', '');
-//							all.banks.accounts.poalimAsakimNew.loadAccDD();
-//							poalimAsakimNew.interTimeOTP();
-//						}
-//						else {
-//							all.banks.core.services.openBankPage("https://biz2.bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=MainFrameSet");
-//						}
-//					}
-                        });
-                    poalimAsakimNew.loggedInOnce = true;
-                } else {
-                    if (poalimAsakimNew.loggedInOnce) {
-                        poalimAsakimNew.loggedInOnce = false;
-                        myEmitterLogs(5, 'OTP login retry failed. Execution interrupted');
-                    } else {
-                        myEmitterLogs(5, 'wrong otp code');
-                    }
-                }
-            }).fail(function (aaa, bbb, ccc) {
-            if (ccc.status === 403) {
+            if (response.statusCode === 403) {
                 myEmitterLogs(5, 'wrong otp code');
             }
-        });
+            return;
+        }
+        console.log('res is: %o', res);
+        if (response.headers && response.headers['content-type'].includes('json') && res["error"] == null) {
+            poalimAsakimNew.loginSkipOTP();
+            poalimAsakimNew.loggedInOnce = true;
+        } else {
+            if (poalimAsakimNew.loggedInOnce) {
+                poalimAsakimNew.loggedInOnce = false;
+                myEmitterLogs(5, 'OTP login retry failed. Execution interrupted');
+            } else {
+                myEmitterLogs(5, 'wrong otp code');
+            }
+        }
     }
-    poalimAsakimNew.loginSkipOTP = function (skipOtpUrl) {
+    poalimAsakimNew.loginSkipOTP = async function (skipOtpUrl) {
+        writeLog('Start loginSkipOTP');
+
         if (all.banks.generalVariables.isOtp) {
             $("#passOtp").fadeOut();
         }
-
-        if (poalimAsakimNew.middleOfWork) {
-            all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/ServerServices/landing-page?action=init&lang=he", 'GET', null, false, false)
-                .then(function (data, state, status, responseUrl) {
-                    all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/ng-portals/landing-page/0?lang=he", 'GET', null, false, false)
-                        .then(function (data, state, status, responseUrl) {
-                            win.cookies.get({
-                                url: 'https://biz2.bankhapoalim.co.il',
-                                name: 'XSRF-TOKEN'
-                            }, function (v) {
-                                if (v) {
-                                    poalimAsakimNew.xsrfToken = v.value;
-                                }
-
-                                $('#filecontainerlogin').attr('src', '');
-                                poalimAsakimNew.newAcc = true;
-                                poalimAsakimNew.BankNumber = all.banks.accountDetails.bank.BankNumber;
-                                all.banks.accountDetails.bank.BankNumber = 12;
-                                all.banks.accountDetails.run_type = 999;
-                                poalimAsakimNew.indPoalim122 = true;
-                                poalimAsakimNew.middleOfWork = false;
-                            });
-                        })
-                })
-        } else {
-            all.banks.core.services.httpReq(skipOtpUrl, 'GET', null, false, false)
-                .then(function (data, state, status, responseUrl) {
-                    if (responseUrl && responseUrl.includes('/mcp/start?flow=mcp&state=start')) {
-                        myEmitterLogs(6);
-                        return;
-                    }
-
-                    var data = all.banks.core.services.parseHtml(data);
-                    var isNew = data.find("#main");
-                    var shouldUseNewSite = isNew.length || (responseUrl &&
-                        (responseUrl.includes('ng-portals/biz/he/homepage')
-                            || responseUrl.includes('ng-portals-bt/biz/he/homepage')));
-                    //					if (all.banks.spiderConfig.forceUseNewPoalimAsakimSite === true || shouldUseNewSite) {
-
-
-                    all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/ServerServices/landing-page?action=init&lang=he", 'GET', null, false, false)
-                        .then(function (data, state, status, responseUrl) {
-                            all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/ng-portals/landing-page/0?lang=he", 'GET', null, false, false)
-                                .then(function (data, state, status, responseUrl) {
-                                    if (!all.banks.openBankPage) {
-                                        if (shouldUseNewSite) {
-                                            win.cookies.get({
-                                                url: 'https://biz2.bankhapoalim.co.il',
-                                                name: 'XSRF-TOKEN'
-                                            }, function (v) {
-                                                poalimAsakimNew.xsrfToken = v.value;
-
-                                                win.cookies.onChanged.addListener((changeInfo) => {
-                                                    if (!changeInfo.removed && changeInfo.cookie.name === 'XSRF-TOKEN') {
-                                                        //										writeLog(`Updating xsrf-token ${poalimAsakimNew.xsrfToken} => ${changeInfo.cookie.value}`);
-                                                        poalimAsakimNew.xsrfToken = changeInfo.cookie.value;
-                                                    }
-                                                });
-
-                                                $('#filecontainerlogin').attr('src', '');
-                                                poalimAsakimNew.newAcc = true;
-                                                if (poalimAsakimNew.middleOfWork) {
-                                                    poalimAsakimNew.middleOfWork = false;
-                                                } else {
-                                                    all.banks.accounts.poalimAsakimNew.loadAccDDNew();
-                                                }
-                                            });
-                                        }
-                                    } else {
-                                        //https://biz2.bankhapoalim.co.il/ng-portals/landing-page/0
-                                        all.banks.core.services.openBankPage("https://biz2.bankhapoalim.co.il/ng-portals/biz/he/homepage");
-                                        //							all.banks.core.services.openBankPage(all.banks.spiderConfig.forceUseNewPoalimAsakimSite === true
-                                        //                                                            ? "https://biz2.bankhapoalim.co.il/biz-portalserver/biz_HomePage"
-                                        //                                                            : (responseUrl || "https://biz2.bankhapoalim.co.il/biz-portalserver/biz_HomePage"));
-                                    }
-                                })
-                        })
-
-                    //					}
-                    //					else {
-                    //						if (!all.banks.openBankPage) {
-                    //							$('#filecontainerlogin').attr('src', '');
-                    //							all.banks.accounts.poalimAsakimNew.loadAccDD();
-                    //							poalimAsakimNew.interTimeOTP();
-                    //						}
-                    //						else {
-                    //							all.banks.core.services.openBankPage("https://biz2.bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=MainFrameSet");
-                    //						}
-                    //					}
-                });
-        }
-    }
-    poalimAsakimNew.loadAccDDNew = function () {
-        all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/ServerServices/general/accounts", 'GET', null, false, false)
-            .then(poalimAsakimNew.failIfRedirectedToError)
-            .then(function (accAll) {
-                if (accAll.length > 0) {
-                    var arrDD = '', arraDD = [], arrForManual = [], len = accAll.length;
-                    $(accAll).each(function (i, v) {
-                        var snifNum = v.branchNumber;
-                        var accNum = v.accountNumber;
-                        if (i + 1 == len) {
-                            arrDD += accNum + '-' + snifNum;
-                        } else {
-                            arrDD += accNum + '-' + snifNum + ',';
-                        }
-                        arraDD.push(accNum + '-' + snifNum);
-                        if (all.banks.bankPoalimAsakimManual) {
-                            if (all.banks.accountDetails.bank.arrDDAll[0].BANK_SNIF_ACCOUNT_KEY == null) {
-                                arrForManual.push({
-                                    "BANK_SNIF_ACCOUNT_KEY": accNum + '-' + snifNum,
-                                    "BITWISE": all.banks.accountDetails.bank.arrDDAll[0].BITWISE,
-                                    "TRANS_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].TRANS_DAY_TO_RUN,
-                                    "CHECKPIC_DAYS_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].CHECKPIC_DAYS_TO_RUN,
-                                    "IND_CCARD_DATA": all.banks.accountDetails.bank.arrDDAll[0].IND_CCARD_DATA,
-                                    "IND_NILVIM": all.banks.accountDetails.bank.arrDDAll[0].IND_NILVIM,
-                                    "MATAH_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].MATAH_DAY_TO_RUN,
-                                    "DATE_TILL": all.banks.accountDetails.bank.arrDDAll[0].DATE_TILL,
-                                    "datebackslesh": all.banks.accountDetails.bank.arrDDAll[0].datebackslesh,
-                                    "datebacksleshTo": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshTo,
-                                    "datebacksleshMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshMatah,
-                                    "datebacksleshToMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshToMatah
-                                })
-                            }
-                        }
-                        if (i + 1 == len) {
-                            let isSet = true;
-                            if (all.banks.bankPoalimAsakimManual) {
-                                if (all.banks.accountDetails.bank.arrDDAll[0].BANK_SNIF_ACCOUNT_KEY == null) {
-                                    isSet = false;
-                                    all.banks.accountDetails.bank.arrDDAll = arrForManual;
-                                }
-                            }
-                            all.banks.accountDetails.bank.arraDD = arraDD;
-                            if (!all.banks.bankPoalimAsakimManual) {
-                                let obj = {};
-                                // if (all.banks.bankPoalimAsakimManual && isSet === false) {
-                                //     obj = {
-                                //         "BITWISE": all.banks.accountDetails.bank.arrDDAll[0].BITWISE,
-                                //         "TRANS_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].TRANS_DAY_TO_RUN,
-                                //         "CHECKPIC_DAYS_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].CHECKPIC_DAYS_TO_RUN,
-                                //         "IND_CCARD_DATA": all.banks.accountDetails.bank.arrDDAll[0].IND_CCARD_DATA,
-                                //         "IND_NILVIM": all.banks.accountDetails.bank.arrDDAll[0].IND_NILVIM,
-                                //         "MATAH_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].MATAH_DAY_TO_RUN,
-                                //         "DATE_TILL": all.banks.accountDetails.bank.arrDDAll[0].DATE_TILL,
-                                //         "datebackslesh": all.banks.accountDetails.bank.arrDDAll[0].datebackslesh,
-                                //         "datebacksleshTo": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshTo,
-                                //         "datebacksleshMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshMatah,
-                                //         "datebacksleshToMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshToMatah
-                                //     }
-                                // }
-
-                                all.banks.accounts.poalimAsakimNew.sendAccDD(arrDD, obj);
-                            } else {
-                                // (all.banks.bankPoalimAsakimManual && isSet === true)
-                                // all.banks.accounts.poalimAsakimNew.loadOsh();
-                                if (isSet) {
-                                    all.banks.accounts.poalimAsakimNew.loadOsh();
-                                } else {
-                                    // if (all.banks.bankPoalimAsakimManual && isSet === false) {
-                                    // }
-                                    let obj = {
-                                        "BITWISE": all.banks.accountDetails.bank.arrDDAll[0].BITWISE,
-                                        "TRANS_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].TRANS_DAY_TO_RUN,
-                                        "CHECKPIC_DAYS_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].CHECKPIC_DAYS_TO_RUN,
-                                        "IND_CCARD_DATA": all.banks.accountDetails.bank.arrDDAll[0].IND_CCARD_DATA,
-                                        "IND_NILVIM": all.banks.accountDetails.bank.arrDDAll[0].IND_NILVIM,
-                                        "MATAH_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].MATAH_DAY_TO_RUN,
-                                        "DATE_TILL": all.banks.accountDetails.bank.arrDDAll[0].DATE_TILL,
-                                        "datebackslesh": all.banks.accountDetails.bank.arrDDAll[0].datebackslesh,
-                                        "datebacksleshTo": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshTo,
-                                        "datebacksleshMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshMatah,
-                                        "datebacksleshToMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshToMatah
-                                    }
-                                    all.banks.accounts.poalimAsakimNew.sendAccDD(arrDD, obj);
-                                }
-                            }
-                            arraDD = null;
-                        }
-                    })
-                }
-            })
-    }
-    poalimAsakimNew.setNewTime = function (cb) {
-        all.banks.core.services.removingCookie(false, function () {
-            loadAuto();
+        await poalimAsakimNew.generalReq({
+            uri: "https://biz2.bankhapoalim.co.il/ServerServices/landing-page?action=init&lang=he",
+            family: 4,
+            timeout: 10000,
+            method: "GET"
         });
-
-        function loadAuto() {
-            if (poalimAsakimNew.indPoalim122) {
-                $('#filecontainerlogin').attr('src', 'https://' + poalimAsakimNew.newAccPath + '.bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=getLogonPageIski');
-                poalimAsakimNew.loginOTP(poalimAsakimNew.passOtpNew, function () {
-                    $('#filecontainerlogin').attr('src', '');
-                    var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=init&reqName=action&language=HE&transactionId=HomePagePoalim&subMenuName=Shekel&ts=189987&tf=" + Math.random() + "&u=i&pSubMenu=undefined&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=187384088979815406&wScr=1920&hScr=1080&tcfo=" + new Date().getTime() + "&mmx=1&qwrt=189987&dtcdb=0&menuTranName=HomePagePoalim"
-                    all.banks.core.services.httpReq(url, 'GET', null, false, false)
-                        .then(function (data, state, status) {
-                            var $$ = all.banks.core.services.parseHtml(data);
-                            data = null;
-                            var ts = $$.find('input[name="ts"]').val();
-                            var u = $$.find('input[name="u"]').val();
-                            var dwx = $$.find('input[name="dwx"]').val();
-                            var tcfo = $$.find('input[name="tcfo"]').val();
-                            var qwrt = $$.find('input[name="qwrt"]').val();
-                            var tsfo = $$.find('input[name="tsfo"]').val();
-                            var mmx = $$.find('input[name="mmx"]').val();
-                            var dwxReq = $$.find('input[name="dwxReq"]').val();
-                            var dwxOp = $$.find('input[name="dwxOp"]').val();
-                            var allAcountsList = $$.find('#allAcountsList');
-                            var reqName = $$.find('input[name="reqName"]').val();
-                            var transactionId = $$.find('input[name="transactionId"]').val();
-                            var menuParam = $$.find('input[name="menuParam"]').val();
-                            var PGcode = $$.find('input[name="PGcode"]').val();
-                            var step = $$.find('input[name="step"]').val();
-                            var fromSubMenu = $$.find('input[name="fromSubMenu"]').val();
-                            var mpux = $$.find('input[name="mpux"]').val();
-                            var targetView = $$.find('input[name="targetView"]').val();
-                            var doc_key = $$.find('input[name="doc_key"]').val();
-                            var callerTid = $$.find('input[name="callerTid"]').val();
-                            var WTcomeFrom = $$.find('input[name="WTcomeFrom"]').val();
-                            var no_Bank = $$.find('input[name="no_Bank"]').val();
-                            var no_Snif = $$.find('input[name="no_Snif"]').val();
-                            var no_Acc = $$.find('input[name="no_Acc"]').val();
-                            var shelav = $$.find('input[name="shelav"]').val();
-                            var goBack = $$.find('input[name="goBack"]').val();
-                            var lastThreeMonthActions = $$.find('input[name="lastThreeMonthActions"]').val();
-                            var dateRangeSelect = $$.find('input[name="dateRangeSelect"]').val();
-                            poalimAsakimNew.varGlobal = {
-                                ts: ts,
-                                u: u,
-                                dwx: dwx,
-                                tcfo: tcfo,
-                                qwrt: qwrt,
-                                tsfo: tsfo,
-                                mmx: mmx,
-                                reqName: reqName,
-                                transactionId: transactionId,
-                                menuParam: menuParam,
-                                PGcode: PGcode,
-                                step: step,
-                                fromSubMenu: fromSubMenu,
-                                mpux: mpux,
-                                targetView: targetView,
-                                dwxReq: dwxReq,
-                                dwxOp: dwxOp,
-                                doc_key: doc_key,
-                                callerTid: callerTid,
-                                WTcomeFrom: WTcomeFrom,
-                                no_Bank: no_Bank,
-                                no_Snif: no_Snif,
-                                no_Acc: no_Acc,
-                                shelav: shelav,
-                                goBack: goBack,
-                                lastThreeMonthActions: lastThreeMonthActions,
-                                dateRangeSelect: dateRangeSelect,
-                                currentAcc: parseFloat(allAcountsList.val())
-                            };
-                            var expires = status.getResponseHeader("X-FRAME-OPTIONS");
-                            if (expires == null) {
-                                $$ = null;
-                                poalimAsakimNew.logOut();
-                            } else {
-                                var req = {
-                                    'input_fromAgg': "",
-                                    'reqName': "action",
-                                    'transactionId': "PerutPikdonotAndPeri",
-                                    'menuParam': "",
-                                    'PGcode': "",
-                                    'step': "1",
-                                    'u': poalimAsakimNew.varGlobal.u,
-                                    'tcfo': poalimAsakimNew.varGlobal.tcfo,
-                                    'tsfo': poalimAsakimNew.varGlobal.tsfo,
-                                    'mmx': poalimAsakimNew.varGlobal.mmx,
-                                    'fromSubMenu': "Investments",
-                                    'qwrt': poalimAsakimNew.varGlobal.qwrt,
-                                    'mpux': "",
-                                    'targetView': "",
-                                    'dwx': poalimAsakimNew.varGlobal.dwx,
-                                    'dwxReq': poalimAsakimNew.varGlobal.dwxReq,
-                                    'dwxOp': poalimAsakimNew.varGlobal.dwxOp,
-                                    'doc_key': "",
-                                    'callerTid': "",
-                                    'WTcomeFrom': "",
-                                    'accountIndex': all.banks.accounts.poalimAsakimNew.indDDAll(all.banks.accounts.poalimAsakimNew.vddVal.BANK_SNIF_ACCOUNT_KEY)
-                                };
-                                all.banks.core.services.httpReq("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc", 'POST', req, true, false)
-                                    .then(function (res) {
-                                        cb();
-                                    })
-                            }
-                        });
-                });
+        await poalimAsakimNew.generalReq({
+            uri: "https://biz2.bankhapoalim.co.il/ng-portals/landing-page/0?lang=he",
+            family: 4,
+            timeout: 10000,
+            method: "GET"
+        });
+        await poalimAsakimNew.generalReq({
+            uri: "https://biz2.bankhapoalim.co.il/ng-portals/biz/he/homepage",
+            family: 4,
+            timeout: 10000,
+            method: "GET",
+            followRedirect: false
+        });
+        if (!all.banks.openBankPage) {
+            poalimAsakimNew.newAcc = true;
+            if (poalimAsakimNew.middleOfWork) {
+                poalimAsakimNew.newAcc = true;
+                if (!poalimAsakimNew.BankNumber) {
+                    poalimAsakimNew.BankNumber = all.banks.accountDetails.bank.BankNumber;
+                }
+                all.banks.accountDetails.bank.BankNumber = 12;
+                all.banks.accountDetails.run_type = 999;
+                poalimAsakimNew.indPoalim122 = true;
+                poalimAsakimNew.middleOfWork = false;
+                writeLog('---Renew login finished now back to the process----');
             } else {
-                $('#filecontainerlogin').attr('src', 'https://' + poalimAsakimNew.newAccPath + '.bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=getLogonIski');
-
-                var ifarmeSetInterval = setInterval(function () {
-                    monitorActivityClass.setIntervalActivity();
-                    var input = window.frames[0].callCheckIsMnkReady;
-                    if (input == undefined) {
-                        myEmitterLogs(2);
-                        $('#filecontainerlogin').attr('src', 'https://' + poalimAsakimNew.newAccPath + '.bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=getLogonIski');
-                    } else {
-                        clearInterval(ifarmeSetInterval);
-                    }
-                }, 4000);
-
-                var waitForIFrame = setInterval(function () {
-                    var input = window.frames[0].callCheckIsMnkReady;
-                    if (input !== undefined) {
-                        myEmitterLogs(3);
-                        clearInterval(waitForIFrame);
-                        doneLoadFrame();
-                    }
-                }, 200);
-
-                function doneLoadFrame() {
-                    try {
-                        var form = {
-                            "password": "",
-                            "language": "HE",
-                            "comeFromBank": "",
-                            "sugUser": "Iski",
-                            "reqName": "performLogon",
-                            "key": window.frames[0].document.logon.key.value,
-                            "bank": "",
-                            "kgmCodeMenahel": "",
-                            "PK": "",
-                            "w": "1024",
-                            "h": "768",
-                            "v": "",
-                            "nls": "HE",
-                            "pkiMessage": "",
-                            "osVersion": "",
-                            "browserVersion": "",
-                            "activeXVersion": "",
-                            "driverVersion": "",
-                            "MiniKeyVersion": "",
-                            "InstituteCode": window.frames[0].document.logon.InstituteCode.value,
-                            "nsv": "y",
-                            "signed": "",
-                            "userid": "",
-                            "sn": "",
-                            "changePswCheck": "",
-                            "saFlash": "false",
-                            "__password": "",
-                        }
-
-                        $('#filecontainerlogin').contents().find("input[name='password']").val(all.banks.accountDetails.bank.password);
-                        var pwdFld = document.createElement("input");
-                        pwdFld.type = "password";
-                        pwdFld.value = all.banks.accountDetails.bank.password;
-                        pwdFld.name = "password";
-
-                        window.frames[0].callCheckIsMnkReady(function (result) {
-                            if (result == "0") {
-                                setTimeout(setMnkLoginSerialNo, 0, 1, pwdFld);
-                            }
-                        });
-
-                        function setMnkLoginSerialNo(fromWhere, pwdFld) {
-                            window.frames[0].callGetSerialToken(function (result) {
-                                form.sn = result;
-                                setTimeout(setMnkLoginSignData, 0, 1, pwdFld);
-                            });
-                        }
-
-                        function setMnkLoginSignData(fromWhere, pwdFld) {
-                            window.frames[0].signMnkToken($('#filecontainerlogin').contents().find("SCRIPT").text().split('signMnkToken("')[1].split('",')[0], pwdFld.value, function (result) {
-                                sArray = result.split(" ");
-                                rc = sArray[0];
-                                if (rc == "0") {
-                                    form.userid = sArray[1];
-                                    form.signed = sArray[2];
-                                    pwdFld.value = "";
-                                }
-                                window.frames[0].vsenc.EncryptForm(window.frames[0].document.logon);
-                                form.password = window.frames[0].document.logon.password.value;
-
-                                all.banks.core.services.httpReq("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc", 'POST', form, true, false)
-                                    .then(function (data, state, status) {
-                                        //	myEmitterLogs(5);
-
-                                        all.banks.core.services.httpReq("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?&reqName=checkMinikeyTimeout", 'GET', null, false, false)
-                                            .then(function (data, state, status) {
-                                                all.banks.core.services.httpReq("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=init&reqName=action&language=HE&transactionId=HomePagePoalim&subMenuName=Shekel&ts=821985&tf=0.9139892475098654&u=i&pSubMenu=undefined&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=872203481444646764&wScr=1024&hScr=768&tcfo=1500516022663&mmx=1&qwrt=821985&dtcdb=99999999&menuTranName=HomePagePoalim", 'GET', null, false, false)
-                                                    .then(function (data, state, status) {
-                                                        $('#filecontainerlogin').attr('src', '');
-                                                        var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=init&reqName=action&language=HE&transactionId=HomePagePoalim&subMenuName=Shekel&ts=189987&tf=" + Math.random() + "&u=i&pSubMenu=undefined&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=187384088979815406&wScr=1920&hScr=1080&tcfo=" + new Date().getTime() + "&mmx=1&qwrt=189987&dtcdb=0&menuTranName=HomePagePoalim"
-                                                        all.banks.core.services.httpReq(url, 'GET', null, false, false)
-                                                            .then(function (data, state, status) {
-                                                                var $$ = all.banks.core.services.parseHtml(data);
-                                                                data = null;
-                                                                var ts = $$.find('input[name="ts"]').val();
-                                                                var u = $$.find('input[name="u"]').val();
-                                                                var dwx = $$.find('input[name="dwx"]').val();
-                                                                var tcfo = $$.find('input[name="tcfo"]').val();
-                                                                var qwrt = $$.find('input[name="qwrt"]').val();
-                                                                var tsfo = $$.find('input[name="tsfo"]').val();
-                                                                var mmx = $$.find('input[name="mmx"]').val();
-                                                                var dwxReq = $$.find('input[name="dwxReq"]').val();
-                                                                var dwxOp = $$.find('input[name="dwxOp"]').val();
-                                                                var allAcountsList = $$.find('#allAcountsList');
-                                                                var reqName = $$.find('input[name="reqName"]').val();
-                                                                var transactionId = $$.find('input[name="transactionId"]').val();
-                                                                var menuParam = $$.find('input[name="menuParam"]').val();
-                                                                var PGcode = $$.find('input[name="PGcode"]').val();
-                                                                var step = $$.find('input[name="step"]').val();
-                                                                var fromSubMenu = $$.find('input[name="fromSubMenu"]').val();
-                                                                var mpux = $$.find('input[name="mpux"]').val();
-                                                                var targetView = $$.find('input[name="targetView"]').val();
-                                                                var doc_key = $$.find('input[name="doc_key"]').val();
-                                                                var callerTid = $$.find('input[name="callerTid"]').val();
-                                                                var WTcomeFrom = $$.find('input[name="WTcomeFrom"]').val();
-                                                                var no_Bank = $$.find('input[name="no_Bank"]').val();
-                                                                var no_Snif = $$.find('input[name="no_Snif"]').val();
-                                                                var no_Acc = $$.find('input[name="no_Acc"]').val();
-                                                                var shelav = $$.find('input[name="shelav"]').val();
-                                                                var goBack = $$.find('input[name="goBack"]').val();
-                                                                var lastThreeMonthActions = $$.find('input[name="lastThreeMonthActions"]').val();
-                                                                var dateRangeSelect = $$.find('input[name="dateRangeSelect"]').val();
-                                                                poalimAsakimNew.varGlobal = {
-                                                                    ts: ts,
-                                                                    u: u,
-                                                                    dwx: dwx,
-                                                                    tcfo: tcfo,
-                                                                    qwrt: qwrt,
-                                                                    tsfo: tsfo,
-                                                                    mmx: mmx,
-                                                                    reqName: reqName,
-                                                                    transactionId: transactionId,
-                                                                    menuParam: menuParam,
-                                                                    PGcode: PGcode,
-                                                                    step: step,
-                                                                    fromSubMenu: fromSubMenu,
-                                                                    mpux: mpux,
-                                                                    targetView: targetView,
-                                                                    dwxReq: dwxReq,
-                                                                    dwxOp: dwxOp,
-                                                                    doc_key: doc_key,
-                                                                    callerTid: callerTid,
-                                                                    WTcomeFrom: WTcomeFrom,
-                                                                    no_Bank: no_Bank,
-                                                                    no_Snif: no_Snif,
-                                                                    no_Acc: no_Acc,
-                                                                    shelav: shelav,
-                                                                    goBack: goBack,
-                                                                    lastThreeMonthActions: lastThreeMonthActions,
-                                                                    dateRangeSelect: dateRangeSelect,
-                                                                    currentAcc: parseFloat(allAcountsList.val())
-                                                                };
-                                                                var expires = status.getResponseHeader("X-FRAME-OPTIONS");
-                                                                if (expires == null) {
-                                                                    $$ = null;
-                                                                    poalimAsakimNew.logOut();
-                                                                } else {
-                                                                    var req = {
-                                                                        'input_fromAgg': "",
-                                                                        'reqName': "action",
-                                                                        'transactionId': "PerutPikdonotAndPeri",
-                                                                        'menuParam': "",
-                                                                        'PGcode': "",
-                                                                        'step': "1",
-                                                                        'u': poalimAsakimNew.varGlobal.u,
-                                                                        'tcfo': poalimAsakimNew.varGlobal.tcfo,
-                                                                        'tsfo': poalimAsakimNew.varGlobal.tsfo,
-                                                                        'mmx': poalimAsakimNew.varGlobal.mmx,
-                                                                        'fromSubMenu': "Investments",
-                                                                        'qwrt': poalimAsakimNew.varGlobal.qwrt,
-                                                                        'mpux': "",
-                                                                        'targetView': "",
-                                                                        'dwx': poalimAsakimNew.varGlobal.dwx,
-                                                                        'dwxReq': poalimAsakimNew.varGlobal.dwxReq,
-                                                                        'dwxOp': poalimAsakimNew.varGlobal.dwxOp,
-                                                                        'doc_key': "",
-                                                                        'callerTid': "",
-                                                                        'WTcomeFrom': "",
-                                                                        'accountIndex': all.banks.accounts.poalimAsakimNew.indDDAll(all.banks.accounts.poalimAsakimNew.vddVal.BANK_SNIF_ACCOUNT_KEY)
-                                                                    };
-                                                                    all.banks.core.services.httpReq("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc", 'POST', req, true, false)
-                                                                        .then(function (res) {
-                                                                            cb();
-                                                                        })
-                                                                }
-                                                            });
-                                                    })
-                                            })
-                                    })
-
-                            })
-                        }
-                    } catch (err) {
-                        all.banks.core.services.errorLog(err);
-                    }
+                myEmitterLogs(28, 'Collect accounts dropdown');
+                all.banks.accounts.poalimAsakimNew.loadAccDDNew();
+            }
+        } else {
+            // win.cookies.getAll({}, function (cool) {
+            //     cool.forEach(function (v) {
+            //         document.cookie = v.name + "=" + v.value + ";";
+            //     })
+            // });
+            for (const cookie of poalimAsakimNew.cookie.split(";")) {
+                let [name, val] = cookie.split(";")[0].split("=");
+                if (val) {
+                    win.cookies.set({
+                        url: "https://biz2.bankhapoalim.co.il",
+                        domain: "biz2.bankhapoalim.co.il",
+                        name: name.replace(/\s/g, ""),
+                        value: val.replace(/\s/g, "")
+                    });
                 }
             }
+            setTimeout(() => {
+                all.banks.core.services.openBankPage("https://biz2.bankhapoalim.co.il/ng-portals/biz/he/homepage");
+            }, 3000)
         }
+
+        // if (poalimAsakimNew.middleOfWork) {
+        //     await poalimAsakimNew.generalReq({
+        //         uri: "https://biz2.bankhapoalim.co.il/ServerServices/landing-page?action=init&lang=he",
+        //         family: 4,
+        //         timeout: 10000,
+        //         method: "GET"
+        //     });
+        //     await poalimAsakimNew.generalReq({
+        //         uri: "https://biz2.bankhapoalim.co.il/ng-portals/landing-page/0?lang=he",
+        //         family: 4,
+        //         timeout: 10000,
+        //         method: "GET"
+        //     });
+        //     poalimAsakimNew.newAcc = true;
+        //     poalimAsakimNew.BankNumber = all.banks.accountDetails.bank.BankNumber;
+        //     all.banks.accountDetails.bank.BankNumber = 12;
+        //     all.banks.accountDetails.run_type = 999;
+        //     poalimAsakimNew.indPoalim122 = true;
+        //     poalimAsakimNew.middleOfWork = false;
+        // } else {
+        // const [error2, response2, responsePage] = await poalimAsakimNew.generalReq({
+        //     uri: skipOtpUrl,
+        //     family: 4,
+        //     timeout: 10000,
+        //     method: "GET",
+        //     followRedirect: false
+        // });
+        //
+        // const responseUrl = response2 && response2.headers && response2.headers.location ? response2.headers.location : null;
+        // if (responseUrl && responseUrl.includes('/mcp/start?flow=mcp&state=start')) {
+        //     myEmitterLogs(6);
+        //     return;
+        // }
+        // // var data = all.banks.core.services.parseHtml(responsePage);
+        // // var isNew = data.find("#main");
+        // // var shouldUseNewSite = isNew.length || (responseUrl &&
+        // //     (responseUrl.includes('ng-portals/biz/he/homepage')
+        // //         || responseUrl.includes('ng-portals-bt/biz/he/homepage')));
+        // //
+        // // shouldUseNewSite = true;
+        // await poalimAsakimNew.generalReq({
+        //     uri: "https://biz2.bankhapoalim.co.il/ServerServices/landing-page?action=init&lang=he",
+        //     family: 4,
+        //     timeout: 10000,
+        //     method: "GET"
+        // });
+        // await poalimAsakimNew.generalReq({
+        //     uri: "https://biz2.bankhapoalim.co.il/ng-portals/landing-page/0?lang=he",
+        //     family: 4,
+        //     timeout: 10000,
+        //     method: "GET"
+        // });
+        //
+        //
+        // if (!all.banks.openBankPage) {
+        //     poalimAsakimNew.newAcc = true;
+        //     if (poalimAsakimNew.middleOfWork) {
+        //         poalimAsakimNew.newAcc = true;
+        //         if (!poalimAsakimNew.BankNumber) {
+        //             poalimAsakimNew.BankNumber = all.banks.accountDetails.bank.BankNumber;
+        //         }
+        //         all.banks.accountDetails.bank.BankNumber = 12;
+        //         all.banks.accountDetails.run_type = 999;
+        //         poalimAsakimNew.indPoalim122 = true;
+        //         poalimAsakimNew.middleOfWork = false;
+        //     } else {
+        //         all.banks.accounts.poalimAsakimNew.loadAccDDNew();
+        //     }
+        // } else {
+        //     all.banks.core.services.openBankPage("https://biz2.bankhapoalim.co.il/ng-portals/biz/he/homepage");
+        // }
+        // }
     }
-    poalimAsakimNew.loadAccDD = function () {
-        var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=init&reqName=action&language=HE&transactionId=HomePagePoalim&subMenuName=Shekel&ts=189987&tf=" + Math.random() + "&u=i&pSubMenu=undefined&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=187384088979815406&wScr=1920&hScr=1080&tcfo=" + new Date().getTime() + "&mmx=1&qwrt=189987&dtcdb=0&menuTranName=HomePagePoalim"
-        all.banks.core.services.httpReq(url, 'GET', null, false, false)
-            .then(function (data, state, status) {
-                var $$ = all.banks.core.services.parseHtml(data);
-                data = null;
-                var ts = $$.find('input[name="ts"]').val();
-                var u = $$.find('input[name="u"]').val();
-                var dwx = $$.find('input[name="dwx"]').val();
-                var tcfo = $$.find('input[name="tcfo"]').val();
-                var qwrt = $$.find('input[name="qwrt"]').val();
-                var tsfo = $$.find('input[name="tsfo"]').val();
-                var mmx = $$.find('input[name="mmx"]').val();
-                var dwxReq = $$.find('input[name="dwxReq"]').val();
-                var dwxOp = $$.find('input[name="dwxOp"]').val();
-                var allAcountsList = $$.find('#allAcountsList');
-                poalimAsakimNew.varGlobal = {
-                    ts: ts,
-                    u: u,
-                    dwx: dwx,
-                    tcfo: tcfo,
-                    qwrt: qwrt,
-                    tsfo: tsfo,
-                    mmx: mmx,
-                    dwxReq: dwxReq,
-                    dwxOp: dwxOp,
-                    currentAcc: parseFloat(allAcountsList.val())
-                };
-                var expires = status.getResponseHeader("X-FRAME-OPTIONS");
-                if (expires == null) {
-                    $$ = null;
-                    poalimAsakimNew.setNewTime(poalimAsakimNew.loadAccDD);
-                    //all.banks.accounts.poalimAsakimNew.logOut();
+    poalimAsakimNew.loadAccDDNew = async function () {
+        let [error, response, accAll] = await poalimAsakimNew.generalReq({
+            uri: "https://biz2.bankhapoalim.co.il/ServerServices/general/accounts",
+            family: 4,
+            timeout: 10000,
+            method: "GET"
+        });
+        if (error || !accAll) {
+            // debugger
+            myEmitterLogs(9, error);
+            return;
+        }
+        accAll = JSON.parse(accAll)
+        if (accAll.length > 0) {
+            var arrDD = '', arraDD = [], arrForManual = [], len = accAll.length;
+            $(accAll).each(function (i, v) {
+                var snifNum = v.branchNumber;
+                var accNum = v.accountNumber;
+                if (i + 1 == len) {
+                    arrDD += accNum + '-' + snifNum;
                 } else {
-                    try {
-                        if ($$.find('form[name="logon"]').length > 0) {
-                            $$ = null;
-                            myEmitterLogs(9);
-                        } else {
-                            $$ = null;
-                            if (allAcountsList.length > 0) {
-                                var arrDD = '', arraDD = [], arrForManual = [],
-                                    len = allAcountsList.find('option').length;
-                                allAcountsList.find('option script').each(function (i, v) {
-                                    var text = $(v).text().split('new Acc(')[1].split(")")[0].split(",");
-                                    var snifNum = text[1].replace(/\D/g, "");
-                                    var accNum = text[2].replace(/\D/g, "");
-                                    if (i + 1 == len) {
-                                        arrDD += accNum + '-' + snifNum;
-                                    } else {
-                                        arrDD += accNum + '-' + snifNum + ',';
-                                    }
-                                    arraDD.push(accNum + '-' + snifNum);
-                                    if (all.banks.bankPoalimAsakimManual) {
-                                        if (all.banks.accountDetails.bank.arrDDAll[0].BANK_SNIF_ACCOUNT_KEY == null) {
-                                            arrForManual.push({
-                                                "BANK_SNIF_ACCOUNT_KEY": accNum + '-' + snifNum,
-                                                "BITWISE": all.banks.accountDetails.bank.arrDDAll[0].BITWISE,
-                                                "TRANS_DAY_TO_RUN": Math.min(all.banks.accountDetails.bank.arrDDAll[0].TRANS_DAY_TO_RUN,
-                                                    poalimAsakimNew.TRANS_DAY_TO_RUN_MAX_FOR_OLD_SITE),
-                                                "CHECKPIC_DAYS_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].CHECKPIC_DAYS_TO_RUN,
-                                                "IND_CCARD_DATA": all.banks.accountDetails.bank.arrDDAll[0].IND_CCARD_DATA,
-                                                "IND_NILVIM": all.banks.accountDetails.bank.arrDDAll[0].IND_NILVIM,
-                                                "MATAH_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].MATAH_DAY_TO_RUN,
-                                                "DATE_TILL": all.banks.accountDetails.bank.arrDDAll[0].DATE_TILL,
-                                                "datebackslesh": all.banks.accountDetails.bank.arrDDAll[0].datebackslesh,
-                                                "datebacksleshTo": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshTo,
-                                                "datebacksleshMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshMatah,
-                                                "datebacksleshToMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshToMatah
-                                            })
-                                        }
-                                    }
-                                    if (i + 1 == len) {
-                                        let isSet = true;
-                                        if (all.banks.bankPoalimAsakimManual) {
-                                            if (all.banks.accountDetails.bank.arrDDAll[0].BANK_SNIF_ACCOUNT_KEY == null) {
-                                                isSet = false;
-                                                all.banks.accountDetails.bank.arrDDAll = arrForManual;
-                                            }
-                                        }
-                                        all.banks.accountDetails.bank.arraDD = arraDD;
-                                        if (all.banks.bankPoalimAsakimManual && all.banks.accountDetails.bank.arrDDAll[0].BANK_SNIF_ACCOUNT_KEY !== null) {
-                                            all.banks.accounts.poalimAsakimNew.loadOsh();
-                                        } else {
-                                            all.banks.accounts.poalimAsakimNew.sendAccDD(arrDD);
-                                        }
-                                        arraDD = null;
-                                    }
-                                })
-                            }
-                        }
-                    } catch (err) {
-                        all.banks.core.services.errorLog(err)
+                    arrDD += accNum + '-' + snifNum + ',';
+                }
+                arraDD.push(accNum + '-' + snifNum);
+                if (all.banks.bankPoalimAsakimManual) {
+                    if (all.banks.accountDetails.bank.arrDDAll[0].BANK_SNIF_ACCOUNT_KEY == null) {
+                        arrForManual.push({
+                            "BANK_SNIF_ACCOUNT_KEY": accNum + '-' + snifNum,
+                            "BITWISE": all.banks.accountDetails.bank.arrDDAll[0].BITWISE,
+                            "TRANS_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].TRANS_DAY_TO_RUN,
+                            "CHECKPIC_DAYS_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].CHECKPIC_DAYS_TO_RUN,
+                            "IND_CCARD_DATA": all.banks.accountDetails.bank.arrDDAll[0].IND_CCARD_DATA,
+                            "IND_NILVIM": all.banks.accountDetails.bank.arrDDAll[0].IND_NILVIM,
+                            "MATAH_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].MATAH_DAY_TO_RUN,
+                            "DATE_TILL": all.banks.accountDetails.bank.arrDDAll[0].DATE_TILL,
+                            "datebackslesh": all.banks.accountDetails.bank.arrDDAll[0].datebackslesh,
+                            "datebacksleshTo": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshTo,
+                            "datebacksleshMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshMatah,
+                            "datebacksleshToMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshToMatah
+                        })
                     }
                 }
-            })
-            .fail(function (error, resErr) {
-                if (resErr == 'error') {
-                    //myEmitterLogs( 27);
-                    $('#filecontainerlogin').attr('src', '')
+                if (i + 1 == len) {
+                    let isSet = true;
+                    if (all.banks.bankPoalimAsakimManual) {
+                        if (all.banks.accountDetails.bank.arrDDAll[0].BANK_SNIF_ACCOUNT_KEY == null) {
+                            isSet = false;
+                            all.banks.accountDetails.bank.arrDDAll = arrForManual;
+                        }
+                    }
+                    all.banks.accountDetails.bank.arraDD = arraDD;
+                    if (!all.banks.bankPoalimAsakimManual) {
+                        let obj = {};
+                        // if (all.banks.bankPoalimAsakimManual && isSet === false) {
+                        //     obj = {
+                        //         "BITWISE": all.banks.accountDetails.bank.arrDDAll[0].BITWISE,
+                        //         "TRANS_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].TRANS_DAY_TO_RUN,
+                        //         "CHECKPIC_DAYS_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].CHECKPIC_DAYS_TO_RUN,
+                        //         "IND_CCARD_DATA": all.banks.accountDetails.bank.arrDDAll[0].IND_CCARD_DATA,
+                        //         "IND_NILVIM": all.banks.accountDetails.bank.arrDDAll[0].IND_NILVIM,
+                        //         "MATAH_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].MATAH_DAY_TO_RUN,
+                        //         "DATE_TILL": all.banks.accountDetails.bank.arrDDAll[0].DATE_TILL,
+                        //         "datebackslesh": all.banks.accountDetails.bank.arrDDAll[0].datebackslesh,
+                        //         "datebacksleshTo": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshTo,
+                        //         "datebacksleshMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshMatah,
+                        //         "datebacksleshToMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshToMatah
+                        //     }
+                        // }
+
+                        all.banks.accounts.poalimAsakimNew.sendAccDD(arrDD, obj);
+                    } else {
+                        // (all.banks.bankPoalimAsakimManual && isSet === true)
+                        // all.banks.accounts.poalimAsakimNew.loadOsh();
+                        if (isSet) {
+                            all.banks.accounts.poalimAsakimNew.loadOsh();
+                        } else {
+                            // if (all.banks.bankPoalimAsakimManual && isSet === false) {
+                            // }
+                            let obj = {
+                                "BITWISE": all.banks.accountDetails.bank.arrDDAll[0].BITWISE,
+                                "TRANS_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].TRANS_DAY_TO_RUN,
+                                "CHECKPIC_DAYS_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].CHECKPIC_DAYS_TO_RUN,
+                                "IND_CCARD_DATA": all.banks.accountDetails.bank.arrDDAll[0].IND_CCARD_DATA,
+                                "IND_NILVIM": all.banks.accountDetails.bank.arrDDAll[0].IND_NILVIM,
+                                "MATAH_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].MATAH_DAY_TO_RUN,
+                                "DATE_TILL": all.banks.accountDetails.bank.arrDDAll[0].DATE_TILL,
+                                "datebackslesh": all.banks.accountDetails.bank.arrDDAll[0].datebackslesh,
+                                "datebacksleshTo": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshTo,
+                                "datebacksleshMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshMatah,
+                                "datebacksleshToMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshToMatah
+                            }
+                            all.banks.accounts.poalimAsakimNew.sendAccDD(arrDD, obj);
+                        }
+                    }
+                    arraDD = null;
                 }
             })
+        }
     }
+
     poalimAsakimNew.sendAccDD = function (arrDD, obj) {
         var data = {
             inspider_id: all.banks.spiderConfig.spiderId,
@@ -1317,6 +1275,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                         });
                     }
                 }
+                // all.banks.accountDetails.bank.arrDDAll = all.banks.accountDetails.bank.arrDDAll.slice(0, 40);
                 writeLog('Poalim asakim: received following accounts for work from server => ' + JSON.stringify(all.banks.accountDetails.bank.arrDDAll));
                 if (response.length > 0) {
                     all.banks.accounts.poalimAsakimNew.loadOsh();
@@ -1366,7 +1325,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                 dateFormat = dateLocal.substring(4, 6) + "/" + dateLocal.substring(6, 8) + "/" + dateLocal.substring(0, 4);
             }
         } else {
-            //debugger
+            //
         }
         return dateFormat;
     }
@@ -1399,12 +1358,18 @@ all.banks.accounts.poalimAsakimNew = function () {
                 // 	type: "text/plain"
                 // });
                 // formData.append(uuid, blob);
-                const formDatas = {
+                let formDatas = {
                     "name": uuid,
                     "filename": "blob",
                 };
                 formDatas[uuid] = content;
                 dfd.resolve(formDatas);
+
+                // formDatas = null;
+                // canvas = null;
+                // dataURL = null;
+                // content = null;
+                // img = null;
 
                 // poalimAsakimNew.sendChecksCtrlNew(formData)
                 // .then(function (arr) {
@@ -1422,13 +1387,14 @@ all.banks.accounts.poalimAsakimNew = function () {
                 } else {
                     all.banks.generalVariables.numChecksNotWithdrawn += 1;
                     dfd.resolve(false);
+                    //debugger
                 }
             };
         }
 
         function loadImage(url) {
             const dfdImg = jQuery.Deferred();
-            const img = new Image();
+            let img = new Image();
             img.src = url;
             const timer = setTimeout(function (theImg) {
                 return function () {
@@ -1438,10 +1404,12 @@ all.banks.accounts.poalimAsakimNew = function () {
             img.onload = () => {
                 clearTimeout(timer);
                 dfdImg.resolve(img);
+                img = null;
             };
             img.onerror = () => {
                 clearTimeout(timer);
                 dfdImg.resolve(null);
+                //debugger
             };
             return dfdImg;
         }
@@ -1452,7 +1420,8 @@ all.banks.accounts.poalimAsakimNew = function () {
                 return null;
             }
 
-            const canvas = document.createElement("canvas"), ctx = canvas.getContext("2d");
+            let canvas = document.createElement("canvas")
+            let ctx = canvas.getContext("2d");
             canvas.width = Math.max(imgFront.width, (imgBack !== null ? imgBack.width : 0));
             canvas.height = imgFront.height + (imgBack !== null ? imgBack.height : 0);
             ctx.drawImage(imgFront, 0, 0);
@@ -1462,9 +1431,12 @@ all.banks.accounts.poalimAsakimNew = function () {
 
 
 // 			console.log('<img src="' + canvas.toDataURL("image/jpeg", poalimAsakimNew.imageScale) + '" />')
-// debugger
-            return canvas.toDataURL("image/jpeg", poalimAsakimNew.imageScale)
+//
+            const dataToSend = canvas.toDataURL("image/jpeg", poalimAsakimNew.imageScale)
                 .replace(/^data:image\/(png|jpg|jpeg);base64,/, "");
+            canvas = null;
+            ctx = null;
+            return dataToSend;
         }
 
         if (Array.isArray(url) && url.length === 2) {
@@ -1472,10 +1444,12 @@ all.banks.accounts.poalimAsakimNew = function () {
                 loadImage(url[0]),
                 loadImage(url[1])
             ).done(function (imgF, imgB) {
-                const mergedImagesData = merge(imgF, imgB);
+                let mergedImagesData = merge(imgF, imgB);
 
                 if (!mergedImagesData) {
                     dfd.resolve(false);
+                    //debugger
+                    mergedImagesData = null;
                     return;
                 }
 
@@ -1485,12 +1459,14 @@ all.banks.accounts.poalimAsakimNew = function () {
                 // });
                 // formData.append(uuid, blob);
                 // dfd.resolve(formData);
-                const formDatas = {
+                let formDatas = {
                     "name": uuid,
                     "filename": "blob",
                 };
                 formDatas[uuid] = mergedImagesData;
                 dfd.resolve(formDatas);
+                formDatas = null;
+                mergedImagesData = null;
 
                 // dfd.resolve({
                 // 	file: mergedImagesData,
@@ -1514,35 +1490,142 @@ all.banks.accounts.poalimAsakimNew = function () {
 
         return dfd.promise();
     };
-    poalimAsakimNew.renewLogin = function (isNotMiddle) {
-        return new Promise(resolve => {
-            function login() {
-                if (isNotMiddle === undefined) {
-                    all.banks.accounts.poalimAsakimNew.middleOfWork = true;
+    poalimAsakimNew.renewLogin = function (clean) {
+        return new Promise(async resolve => {
+            if (!poalimAsakimNew.middleOfWork) {
+                poalimAsakimNew.middleOfWork = true;
+                const diff = Math.abs(new Date(poalimAsakimNew.timeFullLogin) - new Date());
+                const minutes = Math.floor((diff / 1000) / 60);
+                console.log('minutes passed from last full login: ', minutes)
+                if ((minutes > 60 || clean) && (all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A4' || all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A5')) {
+                    window.mi6Cookie = null;
+                    window.csrfcookie = null;
+                    poalimAsakimNew.cookie = '';
+                    for (const property in poalimAsakimNew.cookies) {
+                        if (property !== 'dtCookie' &&
+                            property !== 'dtPC' &&
+                            property !== 'dtSa' &&
+                            property !== 'incap_ses_457_2405218' &&
+                            property !== 'lbinfobiz2' &&
+                            property !== 'nlbi_2405218' &&
+                            property !== 'rxVisitor' &&
+                            property !== 'rxvt' &&
+                            property !== 'visid_incap_2405218') {
+                            delete poalimAsakimNew.cookies[property];
+                        }
+                    }
+                    poalimAsakimNew.loginTimes = 0;
+                    poalimAsakimNew.xsrfToken = null;
+                    poalimAsakimNew.deviceId = null;
+                    poalimAsakimNew.timeFullLogin = new Date();
+                    all.banks.core.services.removingCookie(false, function () {
+                        all.banks.core.main.changeIpV4(false).then(function () {
+                            all.banks.accounts.poalimAsakimNew.login();
+                        });
+                    });
                 } else {
-                    all.banks.accounts.poalimAsakimNew.middleOfWork = false;
+                    if (all.banks.accountDetails.bank.arrDDAll.length < 50 && (all.banks.accountDetails.bank.token !== '88E6C85EB9144928843647E86DDDD3A4' && all.banks.accountDetails.bank.token !== '88E6C85EB9144928843647E86DDDD3A5')) {
+                        await poalimAsakimNew.generalReq({
+                            uri: "https://biz2.bankhapoalim.co.il/ng-portals/biz/he/homepage",
+                            family: 4,
+                            timeout: 10000,
+                            method: "GET",
+                            followRedirect: false
+                        });
+                        setTimeout(() => {
+                            poalimAsakimNew.newAcc = true;
+                            if (!poalimAsakimNew.BankNumber) {
+                                poalimAsakimNew.BankNumber = all.banks.accountDetails.bank.BankNumber;
+                            }
+                            all.banks.accountDetails.bank.BankNumber = 12;
+                            all.banks.accountDetails.run_type = 999;
+                            poalimAsakimNew.indPoalim122 = true;
+                            poalimAsakimNew.middleOfWork = false;
+                            writeLog('---Renew login finished now back to the process----');
+                        }, 5000)
+                    } else {
+                        all.banks.accounts.poalimAsakimNew.login();
+                    }
                 }
-                all.banks.accounts.poalimAsakimNew.login();
-
-                // all.banks.core.main.changeIpV4(false).then(function () {
-                //     all.banks.accounts.poalimAsakimNew.login();
-                // });
-
-                // all.banks.core.services.removingCookie(false, function () {
-                //     document.cookie = '';
-                //     nw.App.clearCache();
-                //     all.banks.accounts.poalimAsakimNew.login();
-                // })
-
                 const inter = setInterval(() => {
                     if (!all.banks.accounts.poalimAsakimNew.middleOfWork) {
                         clearInterval(inter);
-                        resolve(true);
+                        logNew();
+                    }
+                }, 1000);
+            } else {
+                const inter = setInterval(() => {
+                    if (!all.banks.accounts.poalimAsakimNew.middleOfWork) {
+                        clearInterval(inter);
+                        logNew(true);
                     }
                 }, 1000);
             }
 
-            login();
+
+            async function logNew(runImm) {
+                // const firstAcc = ("12-" + all.banks.accountDetails.bank.arrDDAll[0].BANK_SNIF_ACCOUNT_KEY.split('-')[1] + "-" + all.banks.accountDetails.bank.arrDDAll[0].BANK_SNIF_ACCOUNT_KEY.split('-')[0]);
+                // await poalimAsakimNew.generalReq({
+                //     uri: "https://biz2.bankhapoalim.co.il/ServerServices/general/utils/dwh/log?accountId=" + firstAcc + "&lang=he",
+                //     family: 4,
+                //     json: true,
+                //     timeout: 10000,
+                //     method: "POST",
+                //     body: {"success": "y", "currentStep": 1, "steps": 1, "activityCode": 885},
+                //     headers: {
+                //         'Content-Type': 'application/json;charset=UTF-8',
+                //         'accountid': firstAcc
+                //     }
+                // });
+                // console.log('log response statusCode', response2.statusCode)
+                setTimeout(() => {
+                    // poalimAsakimNew.newAcc = true;
+                    // if (!poalimAsakimNew.BankNumber) {
+                    //     poalimAsakimNew.BankNumber = all.banks.accountDetails.bank.BankNumber;
+                    // }
+                    // all.banks.accountDetails.bank.BankNumber = 12;
+                    // all.banks.accountDetails.run_type = 999;
+                    // poalimAsakimNew.indPoalim122 = true;
+                    // poalimAsakimNew.middleOfWork = false;
+                    resolve(true);
+                }, runImm ? 0 : 7000);
+            }
+
+
+            // poalimAsakimNew.cookie = '';
+            // logNew();
+
+
+            // async function logNew() {
+            //
+            // }
+
+
+            // }, 10000)
+
+
+            // function login() {
+            //     if (isNotMiddle === undefined) {
+            //         all.banks.accounts.poalimAsakimNew.middleOfWork = true;
+            //     } else {
+            //         all.banks.accounts.poalimAsakimNew.middleOfWork = false;
+            //     }
+            //     all.banks.accounts.poalimAsakimNew.login();
+            //
+            //     // all.banks.core.main.changeIpV4(false).then(function () {
+            //     //     all.banks.accounts.poalimAsakimNew.login();
+            //     // });
+            //
+            // all.banks.core.services.removingCookie(false, function () {
+            //     document.cookie = '';
+            //     nw.App.clearCache();
+            //     all.banks.accounts.poalimAsakimNew.login();
+            // })
+
+
+            // }
+            //
+            // login();
 
             // clearProxy().then(() => {
             // all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=preLogoff&lang=he", 'GET', null, false, false)
@@ -1567,11 +1650,11 @@ all.banks.accounts.poalimAsakimNew = function () {
     poalimAsakimNew.getNewIp = function () {
         return new Promise(async resolve => {
             request({
-                uri: "https://icanhazip.com",
+                uri: "https://lumtest.com/myip",
                 family: 4,
                 method: 'GET',
                 timeout: 40000000,
-                'proxy': ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225'),
+                proxy: 'http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225',
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36'
                 }
@@ -1583,14 +1666,360 @@ all.banks.accounts.poalimAsakimNew = function () {
             })
         })
     }
-    poalimAsakimNew.loadOsh = async function () {
-        if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
-            if (poalimAsakimNew.intervalXHRKeepProxySession) {
-                clearInterval(poalimAsakimNew.intervalXHRKeepProxySession)
-            }
-            await poalimAsakimNew.getNewIp();
+    poalimAsakimNew.sendOshCtrl = function () {
+        all.banks.core.services.sendOsh(all.banks.generalVariables.allDataArr)
+            .then(function (arr) {
+                myEmitterLogs(29);
+                all.banks.generalVariables.numChecksDrawn = 0;
+                all.banks.generalVariables.numChecksNotWithdrawn = 0;
+
+                if (!poalimAsakimNew.newAcc) {
+                    if (all.banks.accounts.poalimAsakimNew.vddVal.IND_CCARD_DATA > 0) {
+                        // myEmitterLogs(14);
+                        all.banks.accounts.poalimAsakimNew.loadAsharaiPrev(all.banks.accounts.poalimAsakimNew.vddVal.BANK_SNIF_ACCOUNT_KEY)
+                    } else if (all.banks.accounts.poalimAsakimNew.vddVal.IND_NILVIM > 0) {
+                        // myEmitterLogs(17);
+                        all.banks.accounts.poalimAsakimNew.loadDeposits();
+                    } else if (all.banks.accounts.poalimAsakimNew.vddVal.MATAH_DAY_TO_RUN > 0) {
+                        // myEmitterLogs(34);
+                        all.banks.accounts.poalimAsakimNew.loadMatah();
+                    } else {
+                        if (all.banks.accountDetails.bank.arrDDAll.length > 1 && (all.banks.accounts.poalimAsakimNew.accNum + 1 < all.banks.accountDetails.bank.arrDDAll.length)) {
+                            all.banks.accounts.poalimAsakimNew.accNum = all.banks.accounts.poalimAsakimNew.accNum + 1;
+                            all.banks.accounts.poalimAsakimNew.loadOsh();
+                        } else {
+                            all.banks.accounts.poalimAsakimNew.logOut()
+                        }
+                    }
+                } else {
+                    if (all.banks.accounts.poalimAsakimNew.vddVal.IND_CCARD_DATA > 0) {
+                        // myEmitterLogs(14);
+                        poalimAsakimNew.counterCardPrev = 0;
+                        all.banks.generalVariables.allDataArrAshrai = [];
+                        all.banks.accounts.poalimAsakimNew.loadAsharaiPrevNew();
+                    } else if (all.banks.accounts.poalimAsakimNew.vddVal.IND_NILVIM > 0) {
+                        // myEmitterLogs(17);
+                        all.banks.accounts.poalimAsakimNew.loadDepositsNew();
+                    } else if (all.banks.accounts.poalimAsakimNew.vddVal.MATAH_DAY_TO_RUN > 0) {
+                        // myEmitterLogs(34);
+                        all.banks.accounts.poalimAsakimNew.loadMatahNew();
+                    } else {
+                        if (all.banks.accountDetails.bank.arrDDAll.length > 1 && (all.banks.accounts.poalimAsakimNew.accNum + 1 < all.banks.accountDetails.bank.arrDDAll.length)) {
+                            all.banks.accounts.poalimAsakimNew.accNum = all.banks.accounts.poalimAsakimNew.accNum + 1;
+                            all.banks.accounts.poalimAsakimNew.loadOsh();
+                        } else {
+                            poalimAsakimNew.logOutNew();
+                        }
+                    }
+                }
+            })
+            .fail(function (error, resErr) {
+                if (error == 'discard') {
+                    all.banks.accounts.poalimAsakimNew.sendOshCtrl()
+                }
+            })
+    };
+    poalimAsakimNew.sendChecksCtrl = function (formData) {
+        all.banks.core.services.sendChecks(formData)
+            .then(function (arr) {
+                all.banks.generalVariables.numChecksDrawn += 1;
+            })
+            .fail(function (error, resErr) {
+                if (error == 'discard') {
+                    all.banks.accounts.poalimAsakimNew.sendChecksCtrl(formData)
+                }
+            })
+    };
+    poalimAsakimNew.sendChecksCtrlNew = function (formData) {
+        var dfd = jQuery.Deferred();
+
+        function senderChecks() {
+            all.banks.core.services.sendChecks(formData)
+                .then(function (arr) {
+                    if (arr.status == undefined) {
+                        dfd.resolve(true);
+                    } else if (arr.status !== 200) {
+                        dfd.reject(true);
+                    }
+                    all.banks.generalVariables.numChecksDrawn = all.banks.generalVariables.numChecksDrawn + 1;
+                })
+                .fail(function (error, resErr) {
+                    if (error == 'discard') {
+                        senderChecks()
+                    }
+                });
         }
 
+        senderChecks()
+        return dfd.promise();
+    };
+    poalimAsakimNew.sendCardsCtrl = function () {
+        if (poalimAsakimNew.haltAndWaitForReload === true) {
+            return;
+        }
+
+        all.banks.core.services.sendCards(all.banks.generalVariables.allDataArrAshrai)
+            .then(function (arr) {
+                all.banks.generalVariables.allDataArrAshrai = [];
+                if (all.banks.accounts.poalimAsakimNew.vddVal.IND_NILVIM > 0) {
+                    if (!poalimAsakimNew.newAcc) {
+                        // myEmitterLogs(17);
+                        all.banks.accounts.poalimAsakimNew.loadDeposits();
+                    } else {
+                        // myEmitterLogs(17);
+                        poalimAsakimNew.loadDepositsNew();
+                    }
+                } else if (all.banks.accounts.poalimAsakimNew.vddVal.MATAH_DAY_TO_RUN > 0) {
+                    if (!poalimAsakimNew.newAcc) {
+                        // myEmitterLogs(34);
+                        all.banks.accounts.poalimAsakimNew.loadMatah();
+                    } else {
+                        // myEmitterLogs(34);
+                        all.banks.accounts.poalimAsakimNew.loadMatahNew();
+                    }
+                } else {
+                    all.banks.accounts.poalimAsakimNew.accNum = all.banks.accounts.poalimAsakimNew.accNum + 1;
+                    all.banks.accounts.poalimAsakimNew.loadOsh();
+                }
+            })
+            .fail(function (error, resErr) {
+                if (error == 'discard') {
+                    all.banks.accounts.poalimAsakimNew.sendCardsCtrl()
+                }
+            })
+    };
+    poalimAsakimNew.sendPikdonotCtrl = function (allDataArrDeposits) {
+        return new Promise(resolve => {
+            if (poalimAsakimNew.haltAndWaitForReload === true) {
+                return;
+            }
+            const callWs = function () {
+                all.banks.core.services.sendPikdonot(allDataArrDeposits)
+                    .then(function (arr) {
+                        // myEmitterLogs(21);
+                        resolve(true);
+                    })
+                    .fail(async function (error, resErr) {
+                        if (error === 'discard') {
+                            callWs()
+                        } else {
+                            resolve(true);
+                        }
+                    });
+            }
+            callWs();
+        });
+    };
+    poalimAsakimNew.sendLoanCtrl = function (allDataArrLoan) {
+        return new Promise(resolve => {
+            if (poalimAsakimNew.haltAndWaitForReload === true) {
+                return;
+            }
+            const callWs = function () {
+                all.banks.core.services.sendLoan(allDataArrLoan)
+                    .then(function (arr) {
+                        // myEmitterLogs(19);
+                        resolve(true);
+                    })
+                    .fail(function (error, resErr) {
+                        if (error == 'discard') {
+                            callWs()
+                        } else {
+                            resolve(true);
+                        }
+                    })
+            }
+            callWs();
+        });
+    };
+    poalimAsakimNew.sendDueChecksCtrl = function (allDataArrDueChecks) {
+        return new Promise(resolve => {
+            if (poalimAsakimNew.haltAndWaitForReload === true) {
+                return;
+            }
+            const callWs = function () {
+                all.banks.core.services.sendDueChecks(allDataArrDueChecks)
+                    .then(function (arr) {
+                        resolve(true);
+                    })
+                    .fail(function (error, resErr) {
+                        if (error == 'discard') {
+                            callWs()
+                        } else {
+                            resolve(true);
+                        }
+                    })
+            }
+            callWs();
+        });
+    };
+    poalimAsakimNew.sendStandingOrdersCtrl = function (allDataArrDueChecks) {
+        return new Promise(resolve => {
+            if (poalimAsakimNew.haltAndWaitForReload === true) {
+                return;
+            }
+            const callWs = function () {
+                all.banks.core.services.sendStandingOrders(allDataArrDueChecks)
+                    .then(function (arr) {
+                        resolve(true);
+                    })
+                    .fail(function (error, resErr) {
+                        if (error === 'discard') {
+                            callWs()
+                        } else {
+                            resolve(true);
+                        }
+                    })
+            }
+            callWs();
+        });
+    };
+    poalimAsakimNew.sendMatahCtrl = function () {
+//                if(poalimAsakimNew.indPoalim122 && !poalimAsakimNew.newAcc) {
+//                    Object.assign(all.banks.generalVariables.allDataArr, {"OtpOld": true});
+//                }
+        all.banks.core.services.sendOsh(all.banks.generalVariables.allDataArr, true)
+            .then(function (arr) {
+                all.banks.accounts.poalimAsakimNew.accNum = all.banks.accounts.poalimAsakimNew.accNum + 1;
+                all.banks.accounts.poalimAsakimNew.loadOsh();
+            })
+            .fail(function (error, resErr) {
+                if (error == 'discard') {
+                    all.banks.accounts.poalimAsakimNew.sendMatahCtrl()
+                }
+            })
+    }
+    poalimAsakimNew.getBase64FromImageUrlNew = function (urlXhrCheck, deta) {
+        var dfd = jQuery.Deferred();
+        poalimAsakimNew.getBase64FromImageUrlCounter += 1;
+        all.banks.core.services.httpReq(urlXhrCheck, 'GET', null, false, false)
+            .then(function (data) {
+                poalimAsakimNew.getBase64FromImageUrlCounter = 0;
+                try {
+                    var arrList = [];
+                    if (data !== undefined && data.list !== undefined && data.list.length > 0) {
+                        $(data.list).each(function (index, v) {
+                            var uuid = parseInt(v.bank) + '' + parseInt(v.branch) + '' + parseInt(v.account) + '' + parseInt(v.number) + '' + parseInt(deta.originalEventCreateDate) + '_' + all.banks.generalVariables.allDataArr.BankData[0].Account[0].BankNumber + '' + all.banks.generalVariables.allDataArr.BankData[0].Account[0].BranchNumber + '' + all.banks.generalVariables.allDataArr.BankData[0].Account[0].AccountNumber;
+                            arrList.push({
+                                "Asmachta": deta.referenceNumber || v.number,
+                                "CheckAccountNumber": v.account,
+                                "DepositeDate": deta.originalEventCreateDate || v.transactionDate,
+                                "CheckBankNumber": v.bank,
+                                "CheckBranchNumber": v.branch,
+                                "CheckNumber": v.number,
+                                "CheckTotal": v.amount,
+                                "ImageNameKey": uuid,
+                                "url": v.imageFrontLink && v.imageFrontLink.length > 0 && v.imageFrontLink.indexOf('000000000000000000000.png') === -1
+                                    ? [v.imageFrontLink, v.imageBackLink]
+                                        .filter(lnk => lnk && !lnk.includes('000000000000000000000.png'))
+                                        .map(lnk => ('https://biz2.bankhapoalim.co.il' + lnk))
+                                    : undefined
+                            });
+                            if (data.list.length == index + 1) {
+                                dfd.resolve(arrList);
+                            }
+                        })
+                    } else {
+                        all.banks.generalVariables.numChecksNotWithdrawn += 1;
+                        //debugger
+                        dfd.resolve([{
+                            "ImageNameKey": "x"
+                        }]);
+                    }
+                } catch (err) {
+                    all.banks.core.services.errorLog(err)
+                }
+            })
+            .fail(function (error, resErr) {
+                if (poalimAsakimNew.getBase64FromImageUrlCounter < 5) {
+                    dfd.reject(null);
+                } else {
+                    poalimAsakimNew.getBase64FromImageUrlCounter = 0;
+                    all.banks.generalVariables.numChecksNotWithdrawn += 1;
+                    //debugger
+                    dfd.resolve([{
+                        "ImageNameKey": "x"
+                    }]);
+                }
+            })
+        return dfd.promise();
+    };
+
+    poalimAsakimNew.returnNumAll = function (arrAll) {
+        function returnNum(arrNumbers, splits) {
+            var id;
+            if (splits) {
+                var arrs = arrNumbers.split('');
+            } else {
+                var arrs = arrNumbers;
+            }
+            $(arrs).each(function (i, v) {
+                var val = parseFloat(v);
+                if (!isNaN(val)) {
+                    id = i;
+                    return false;
+                }
+            });
+            return id;
+        }
+
+        var arrNumbers = returnNum(arrAll, true);
+        var arrRevers = returnNum(arrAll.split('').reverse(), false);
+        var sumFinish = parseFloat(arrAll.substring(arrNumbers, arrAll.length - arrRevers)) * -1;
+        return sumFinish;
+    };
+    poalimAsakimNew.returnClearSum = function (text) {
+        try {
+            var text = text.toString();
+            if (text !== undefined && text !== null) {
+                var sumClear = text.replace(/[^\d\.-]/g, "");
+                return sumClear;
+            } else {
+                return null;
+            }
+        } catch (e) {
+            return null;
+        }
+    }
+    poalimAsakimNew.alreadyFetchedInPrevious = function (signiture) {
+        if (!all.banks.generalVariables.allDataArrAshrai || all.banks.generalVariables.allDataArrAshrai.length === 0
+            || !signiture || !signiture['BranchNumber'] || !signiture['AccountNumber'] || !signiture['CardNumber']
+            || !signiture['NextBillingDate'] || !signiture['NextCycleTotal'] || !signiture['ValueDate']) {
+            return false;
+        }
+
+        for (var idx = all.banks.generalVariables.allDataArrAshrai.length - 1; idx >= 0; idx--) {
+            var cardTrans = all.banks.generalVariables.allDataArrAshrai[idx];
+            if (cardTrans['CardNumber'] === signiture['CardNumber']
+                && cardTrans['NextBillingDate'] === signiture['NextBillingDate']
+                && cardTrans['NextCycleTotal'] === signiture['NextCycleTotal']
+                && cardTrans['ValueDate'] === signiture['ValueDate']
+                && cardTrans['BranchNumber'] === signiture['BranchNumber']
+                && cardTrans['AccountNumber'] === signiture['AccountNumber']) {
+                return true;
+            }
+        }
+        return false;
+    }
+    poalimAsakimNew.loadOsh = async function () {
+        // if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
+        //     if (poalimAsakimNew.intervalXHRKeepProxySession) {
+        //         clearInterval(poalimAsakimNew.intervalXHRKeepProxySession)
+        //     }
+        //     await poalimAsakimNew.getNewIp();
+        // }
+        if (all.banks.accountDetails.bank.arrDDAll.length < 50 && (all.banks.accountDetails.bank.token !== '88E6C85EB9144928843647E86DDDD3A4' && all.banks.accountDetails.bank.token !== '88E6C85EB9144928843647E86DDDD3A5')) {
+            poalimAsakimNew.numberOfOperations = 5;
+            poalimAsakimNew.numberOfOperationsChecks = 5;
+            poalimAsakimNew.numOfAccForRenewLogin = 20;
+            poalimAsakimNew.numOfAccForRenewLoginOsh = 20;
+            poalimAsakimNew.numOfAccForRenewLoginCards = 20;
+            poalimAsakimNew.numberOfOperationsCards = 5;
+            poalimAsakimNew.numOfAccForRenewLoginMatah = 20;
+            poalimAsakimNew.numberOfOperationsMatah = 5;
+            poalimAsakimNew.numberOfOperationsNilvim = 5;
+            poalimAsakimNew.numOfAccForRenewLoginNilvim = 20;
+        }
         writeLog('Start loadOsh');
         const started = Date.now();
         let numForLogsOut = 0;
@@ -1604,7 +2033,6 @@ all.banks.accounts.poalimAsakimNew = function () {
         //         });
         //     }
         // }, 20000);
-
         all.banks.generalVariables.allDataArr = {
             "ExporterId": all.banks.spiderConfig.spiderId,
             "BankData": [{
@@ -1616,7 +2044,7 @@ all.banks.accounts.poalimAsakimNew = function () {
             }]
         };
         try {
-            const ARR_TRANS_DAY_TO_RUN = (all.banks.accountDetails.bank.arrDDAll.filter((it) => (it.TRANS_DAY_TO_RUN > 0)))
+            let ARR_TRANS_DAY_TO_RUN = (all.banks.accountDetails.bank.arrDDAll.filter((it) => (it.TRANS_DAY_TO_RUN > 0)))
                 .map((item, idx) => {
                     if (!all.banks.bankPoalimAsakimManual) {
                         var dateFromMatah = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - item.MATAH_DAY_TO_RUN);
@@ -1659,7 +2087,10 @@ all.banks.accounts.poalimAsakimNew = function () {
                     })
                 });
 
-            writeLog('ARR_TRANS_DAY_TO_RUN: ' +  JSON.stringify(ARR_TRANS_DAY_TO_RUN));
+            // ARR_TRANS_DAY_TO_RUN = ARR_TRANS_DAY_TO_RUN.slice(0, 20)
+
+            writeLog('ARR_TRANS_DAY_TO_RUN: ' + JSON.stringify(ARR_TRANS_DAY_TO_RUN));
+            writeLog('ARR_TRANS_DAY_TO_RUN length: ' + ARR_TRANS_DAY_TO_RUN.length);
 
             const listOfArguments = ARR_TRANS_DAY_TO_RUN;
             const listOfArgumentsSlice = (ARR_TRANS_DAY_TO_RUN.length / poalimAsakimNew.numberOfOperations);
@@ -1670,10 +2101,10 @@ all.banks.accounts.poalimAsakimNew = function () {
                 return new Promise(async resolve => {
                     try {
                         monitorActivityClass.setIntervalActivity();
-                        await resolveCookies();
+                        // await resolveCookies();
                         console.log('step 1------ Running Index account: ' + param.idx);
                         console.log(all.banks.core.services.logAlertsBanks(30, JSON.stringify(all.banks.accountDetails.bank.arrDDAll[param.idx])));
-
+                        // writeLog('step 1------ Running Index account: ' + param.idx);
                         const text = "מתחיל עוש לחשבון" + " " + all.banks.accountDetails.bank.arrDDAll[param.idx].BANK_SNIF_ACCOUNT_KEY + " " + "לתאריכים" + " " + all.banks.accountDetails.bank.arrDDAll[param.idx].datebackslesh + "-" + all.banks.accountDetails.bank.arrDDAll[param.idx].datebacksleshTo;
                         console.log(all.banks.core.services.logAlertsBanks(10, text));
 
@@ -1687,41 +2118,52 @@ all.banks.accounts.poalimAsakimNew = function () {
                             });
                         } catch (e) {
                             console.log(e)
-
                         }
 
                         console.log('step 2------ balanceAndCreditLimit of Index account: ' + param.idx);
+                        // writeLog('step 2------ balanceAndCreditLimit of Index account: ' + param.idx);
+
                         let account;
                         try {
                             if (balanceAndCreditLimit.response[0].headers && balanceAndCreditLimit.response[0].headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (balanceAndCreditLimit.response[0].headers.location).includes(urlPart))) {
-                                let err = new Error("Redirected to " + (balanceAndCreditLimit.response[0].headers.location) + " perhaps because of another otp session started somewhere. Terminating with error.");
+                                let err = ("Redirected to " + (balanceAndCreditLimit.response[0].headers.location) + " perhaps because of another otp session started somewhere. Terminating with error.");
                                 if (balanceAndCreditLimit.response[0].headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                    err = new Error("Redirected to " + balanceAndCreditLimit.response[0].headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                    err = ("Redirected to " + balanceAndCreditLimit.response[0].headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
                                 }
-                                all.banks.core.services.errorLog(err);
+                                myEmitterLogs(err);
                                 poalimAsakimNew.haltAndWaitForReload = true;
                                 poalimAsakimNew.logOutNew();
                                 return;
                             }
-
+                            console.log('balanceAndCreditLimit: ', balanceAndCreditLimit.response[0].response);
                             account = Object.assign({
                                 'DataRow': [],
                                 'BankNumber': param.BankNumber,
                                 'AccountNumber': param.AccountNumber,
                                 'BranchNumber': param.BranchNumber,
                             }, ((balanceAndCreditLimit.response[0].statusCode === 204) ? {
-                                'Balance': null,
+                                'Balance': 0,
                                 'AccountCredit': 0
                             } : {
-                                'Balance': (balanceAndCreditLimit.response[0].response.currentBalance !== undefined) ? balanceAndCreditLimit.response[0].response.currentBalance : null,
-                                'AccountCredit': (balanceAndCreditLimit.response[0].response.currentAccountLimitsAmount !== undefined) ? balanceAndCreditLimit.response[0].response.currentAccountLimitsAmount : null,
+                                'Balance': (balanceAndCreditLimit.response[0].response && balanceAndCreditLimit.response[0].response.currentBalance !== undefined) ? balanceAndCreditLimit.response[0].response.currentBalance : 0,
+                                'AccountCredit': (balanceAndCreditLimit.response[0].response && balanceAndCreditLimit.response[0].response.currentAccountLimitsAmount !== undefined) ? balanceAndCreditLimit.response[0].response.currentAccountLimitsAmount : null,
                             }));
                             console.log('step 3------ set account params of Index account: ' + param.idx);
+                            // writeLog('step 3------ set account params of Index account: ' + param.idx);
+
                         } catch (e) {
                             console.log(e)
-
                         }
-
+                        if (!account) {
+                            account = Object.assign({
+                                'DataRow': [],
+                                'BankNumber': param.BankNumber,
+                                'AccountNumber': param.AccountNumber,
+                                'BranchNumber': param.BranchNumber,
+                                'Balance': 0,
+                                'AccountCredit': 0
+                            });
+                        }
                         let transactions;
                         let stopped = false
                         let fullDataRows = {};
@@ -1732,13 +2174,14 @@ all.banks.accounts.poalimAsakimNew = function () {
                                 let data_eventsStatusDataList = await resolveSender({
                                     urls: ['https://biz2.bankhapoalim.co.il/ServerServices/current-account/signatures/events?accountId='
                                     + param.bankParams
-                                    + "&limit=500&offset=0&handlingEventRetrievalSwitch=2&lang=he"
+                                    + "&limit=9999&offset=0&handlingEventRetrievalSwitch=2&lang=he"
                                     + "&endDate=" + param.datebacksleshTo
                                     + "&startDate=" + param.datebackslesh],
                                     method: "GET",
                                     body: null,
                                     headers: null,
                                 });
+                                // writeLog('send Req for Osh: ' + 'accountId=' + param.bankParams + "&startDate=" + param.datebackslesh + "&endDate=" + param.datebacksleshTo);
                                 eventsStatusDataList = data_eventsStatusDataList.response[0].response;
                                 if (eventsStatusDataList && eventsStatusDataList.eventsStatusDataList && eventsStatusDataList.eventsStatusDataList.length) {
                                     eventsStatusDataList = eventsStatusDataList.eventsStatusDataList;
@@ -1750,9 +2193,9 @@ all.banks.accounts.poalimAsakimNew = function () {
                             }
                             try {
                                 transactions = await getTransactions("https://biz2.bankhapoalim.co.il/ServerServices/current-account/transactions"
-                                    + (poalimAsakimNew.last_data_headerVal ? ("/" + poalimAsakimNew.last_data_headerVal) : "")
+                                    // + (poalimAsakimNew.last_data_headerVal ? ("/" + poalimAsakimNew.last_data_headerVal) : "")
                                     + "?accountId=" + param.bankParams
-                                    + "&numItemsPerPage=500&sortCode=2&lang=he"
+                                    + "&numItemsPerPage=9999&sortCode=2&lang=he"
                                     + "&retrievalEndDate=" + param.datebacksleshTo
                                     + "&retrievalStartDate=" + param.datebackslesh);
                             } catch (e) {
@@ -1768,8 +2211,6 @@ all.banks.accounts.poalimAsakimNew = function () {
                             //         }
                             //     }
                             // }
-
-
                             if (transactions && transactions.transactions && transactions.transactions.length === 510 || (fullDataRows && fullDataRows.transactions)) {
                                 if (fullDataRows && fullDataRows.transactions) {
                                     fullDataRows.transactions = fullDataRows.transactions.concat(transactions.transactions)
@@ -1789,17 +2230,21 @@ all.banks.accounts.poalimAsakimNew = function () {
                             firstTime = false;
                         }
 
-                        console.log('step 4------ transactions of Index account: ' + param.idx);
+                        console.log('step 4 ------ transactions of Index account: ' + param.idx);
+                        // writeLog('step 4 ------ transactions of Index account: ' + param.idx);
+
                         console.log(all.banks.core.services.logAlertsBanks(11)); // get data
                         if (!transactions || !transactions.transactions) {
                             try {
-                                transactions = await getTransactions("https://biz2.bankhapoalim.co.il/ServerServices/current-account/transactions?numItemsPerPage=500&sortCode=1&accountId=" + param.bankParams + "&lang=he");
+                                transactions = await getTransactions("https://biz2.bankhapoalim.co.il/ServerServices/current-account/transactions?numItemsPerPage=9999&sortCode=1&accountId=" + param.bankParams + "&lang=he");
                             } catch (e) {
                                 console.log(e)
                             }
                         }
                         if (transactions && transactions.transactions && transactions.transactions.length) {
-                            console.log('step 5------ processTransactions of Index account: ' + param.idx);
+                            console.log('step 5 ------ processTransactions of Index account: ' + param.idx);
+                            // writeLog('step 5 ------ processTransactions of Index account: ' + param.idx);
+
                             let transactionsArr;
                             try {
                                 transactionsArr = await processTransactions(transactions, param.CHECKPIC_DAYS_TO_RUN, param.bankParams, eventsStatusDataList);
@@ -1814,6 +2259,8 @@ all.banks.accounts.poalimAsakimNew = function () {
                                 }
                             });
                             console.log('grTransfer found ' + grTransfer.length + ' of Index account: ' + param.idx);
+                            // writeLog('grTransfer found ' + grTransfer.length + ' of Index account: ' + param.idx);
+
                             if (grTransfer.length) {
                                 // try {
                                 //     let data_eventsStatusDataList = await resolveSender({
@@ -1948,8 +2395,16 @@ all.banks.accounts.poalimAsakimNew = function () {
                                 account.DataRow = transactionsArr;
                             }
                         }
-
+                        if (account && !account.DataRow) {
+                            account.DataRow = [];
+                        }
                         console.log('Last step ------ found ' + account.DataRow.length + ' transactionsArr of Index account: ' + param.idx);
+                        writeLog('Last step ------ found ' + account.DataRow.length + ' transactionsArr of Index account: ' + param.idx);
+                        try {
+                            myEmitterLogs((account.AccountNumber + '_' + account.BranchNumber) + '- transactions length from Bank: ' + ((transactions && transactions.transactions && Array.isArray(transactions.transactions)) ? transactions.transactions.length : '0') + ' length to send: ' + account.DataRow.length);
+                        } catch (eeee) {
+
+                        }
                         resolve(account);
                     } catch (e) {
                         console.log(e);
@@ -1961,33 +2416,38 @@ all.banks.accounts.poalimAsakimNew = function () {
             };
 
             function resolveSender(item) {
-                monitorActivityClass.setIntervalActivity();
+                const interChecks = setInterval(() => {
+                    monitorActivityClass.setIntervalActivity();
+                }, 20000);
+
                 return new Promise(resolve => {
                     const callWs = function () {
                         let params = Object.assign(item, {
-                            cookies: document.cookie,
+                            cookies: poalimAsakimNew.cookie,
                             token: poalimAsakimNew.xsrfToken,
                             numberOfOperations: item.isChecks ? poalimAsakimNew.numberOfOperationsChecks : ((item.isCheck) ? 1 : poalimAsakimNew.numberOfOperations),
                         });
-                        if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
-                            params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
-                        }
+                        // if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
+                        //     params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
+                        // }
                         parallelReq(params, function (output) {
+                            clearInterval(interChecks);
                             try {
+                                // if(item.isChecks){
+                                //     console.log('response: ' , output.response)
+                                // }
                                 const numOfLogsOut = output.response.filter(it => it.statusCode === 403);
                                 // numForLogsOut += numOfLogsOut.length;
                                 if (numOfLogsOut.length > 0) {
                                     // numForLogsOut = 0;
-                                    all.banks.accounts.poalimAsakimNew.middleOfWork = true;
                                     all.banks.accounts.poalimAsakimNew.renewLogin().then(() => {
                                         if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                                            let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                            let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
                                             if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                                err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                                err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
                                             }
-                                            all.banks.core.services.errorLog(err);
+                                            writeLog(err);
                                             poalimAsakimNew.haltAndWaitForReload = true;
-
                                             myEmitterLogs('Send data osh');
                                             arrayCollectSave.forEach(it => {
                                                 it.DataRow.forEach(child => {
@@ -2013,8 +2473,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                                         if (output.response.some(item => item.error !== false)) {
                                             if (!poalimAsakimNew.loginRenewFun && !all.banks.accounts.poalimAsakimNew.middleOfWork) {
                                                 poalimAsakimNew.loginRenewFun = true;
-
-                                                poalimAsakimNew.loginRenewFun = false;
+                                                // poalimAsakimNew.loginRenewFun = false;
                                                 setTimeout(() => {
                                                     callWs()
                                                 }, 1000)
@@ -2035,13 +2494,15 @@ all.banks.accounts.poalimAsakimNew = function () {
                                     });
                                 } else {
                                     if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                                        let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                        let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
                                         if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                            err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                            err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
                                         }
-                                        all.banks.core.services.errorLog(err);
-                                        poalimAsakimNew.haltAndWaitForReload = true;
-
+                                        writeLog(err);
+                                        if (all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A4' || all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A5') {
+                                        } else {
+                                            poalimAsakimNew.haltAndWaitForReload = true;
+                                        }
                                         myEmitterLogs('Send data osh');
                                         arrayCollectSave.forEach(it => {
                                             it.DataRow.forEach(child => {
@@ -2060,14 +2521,49 @@ all.banks.accounts.poalimAsakimNew = function () {
                                             }]
                                         }).then(() => {
                                             myEmitterLogs('Sent data Successfully');
-                                            poalimAsakimNew.logOutNew();
+                                            if (all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A4' || all.banks.accountDetails.bank.token === '88E6C85EB9144928843647E86DDDD3A5') {
+                                                all.banks.accounts.poalimAsakimNew.renewLogin(true).then(() => {
+                                                    if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
+                                                        let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                                        if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
+                                                            err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                                        }
+                                                        writeLog(err);
+                                                        poalimAsakimNew.logOutNew();
+                                                        return;
+                                                    }
+                                                    if (output.response.some(item => item.error !== false)) {
+                                                        if (!poalimAsakimNew.loginRenewFun && !all.banks.accounts.poalimAsakimNew.middleOfWork) {
+                                                            poalimAsakimNew.loginRenewFun = true;
+                                                            // poalimAsakimNew.loginRenewFun = false;
+                                                            setTimeout(() => {
+                                                                callWs()
+                                                            }, 1000)
+                                                            // all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/ng-portals/biz/he/homepage", 'GET', null, false, false)
+                                                            //     .then(() => {
+                                                            //         resolveCookies().then(() => {
+                                                            //
+                                                            //         });
+                                                            //     }).fail(() => {
+                                                            //
+                                                            // })
+                                                        } else {
+                                                            resolve(output);
+                                                        }
+                                                    } else {
+                                                        resolve(output);
+                                                    }
+                                                });
+                                            } else {
+                                                poalimAsakimNew.logOutNew();
+                                            }
                                         })
                                         return;
                                     }
                                     if (output.response.some(item => item.error !== false)) {
                                         if (!poalimAsakimNew.loginRenewFun && !all.banks.accounts.poalimAsakimNew.middleOfWork) {
                                             poalimAsakimNew.loginRenewFun = true;
-                                            poalimAsakimNew.loginRenewFun = false;
+                                            // poalimAsakimNew.loginRenewFun = false;
                                             setTimeout(() => {
                                                 callWs()
                                             }, 1000)
@@ -2145,7 +2641,6 @@ all.banks.accounts.poalimAsakimNew = function () {
                     }
                 });
             }
-
 
             function processTransactions(transactions, checks, bankParams, eventsStatusDataList) {
                 return new Promise(resolve => {
@@ -2231,7 +2726,14 @@ all.banks.accounts.poalimAsakimNew = function () {
                                     transactionsArr.push(trans);
                                 } else if (hasHaavaraChainType) {
                                     if (eventsStatusDataList) {
-                                        const foundHaavara = eventsStatusDataList.find(it => (val.eventAmount === it.eventAmount && val.eventDate === it.eventCreateDate));
+                                        let dateToFormat = new Date(Number(val.eventDate.toString().slice(0, 4)), Number(val.eventDate.toString().slice(4, 6)) - 1, Number(val.eventDate.toString().slice(6, 8)));
+                                        const datesOpt = [];
+                                        datesOpt.push(dateToFormat.getFullYear() + '' + (("0" + (dateToFormat.getMonth() + 1)).slice(-2)) + '' + ("0" + (dateToFormat.getDate())).slice(-2))
+                                        for (let i = 3; i > 0; i--) {
+                                            dateToFormat.setDate(dateToFormat.getDate() - 1);
+                                            datesOpt.push(dateToFormat.getFullYear() + '' + (("0" + (dateToFormat.getMonth() + 1)).slice(-2)) + '' + ("0" + (dateToFormat.getDate())).slice(-2))
+                                        }
+                                        const foundHaavara = eventsStatusDataList.find(it => (val.eventAmount === it.eventAmount && datesOpt.some(ite => ite === it.eventCreateDate.toString())));
                                         if (foundHaavara) {
                                             trans.DepositeTransferData = "https://biz2.bankhapoalim.co.il/ServerServices/current-account/transfers/collections/signatures"
                                                 + "?accountId=" + bankParams
@@ -2248,7 +2750,6 @@ all.banks.accounts.poalimAsakimNew = function () {
                         resolve(transactionsArr);
                     } catch (e) {
                         console.log(e)
-
                     }
                 });
             }
@@ -2270,6 +2771,14 @@ all.banks.accounts.poalimAsakimNew = function () {
                         ' חשבונות נוספים, אינדקס מספר: '
                         +
                         idxArr));
+                    writeLog(('תחילת ריצת '
+                        +
+                        poalimAsakimNew.numberOfOperations
+                        +
+                        ' חשבונות נוספים, אינדקס מספר: '
+                        +
+                        idxArr));
+
                     const slicePos = (poalimAsakimNew.numberOfOperations * idxArr);
                     const argsCopy = [].concat(listOfArguments.slice((slicePos), (slicePos + poalimAsakimNew.numberOfOperations)).map((val, ind) => ({
                         val,
@@ -2284,6 +2793,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                             return p.then(() => {
                                 const operationPromise = asyncOperation(arg.val).then(r => {
                                     console.log('סיום ריצת חשבון-----' + arg.ind, r);
+                                    writeLog('סיום ריצת חשבון-----' + arg.ind);
                                     arrayCollectSave.push(r);
                                     result[arg.ind] = r;
                                 });
@@ -2301,7 +2811,13 @@ all.banks.accounts.poalimAsakimNew = function () {
                         ' חשבונות נוספים, אינדקס מספר: '
                         +
                         idxArr), result);
-
+                    writeLog(('סיום ריצת '
+                        +
+                        poalimAsakimNew.numberOfOperations
+                        +
+                        ' חשבונות נוספים, אינדקס מספר: '
+                        +
+                        idxArr));
                     return result;
                 }
 
@@ -2333,7 +2849,9 @@ all.banks.accounts.poalimAsakimNew = function () {
                                     "Account": resultCopy
                                 }]
                             })
-                            myEmitterLogs('Sent data Successfully of slice: ' + idx);
+                            if (resultCopy && Array.isArray(resultCopy) && resultCopy.length) {
+                                myEmitterLogs((resultCopy[0].BranchNumber + '-' + resultCopy[0].AccountNumber + ' - ') + 'Sent data Successfully of slice: ' + idx + 'DataRow length: ' + resultCopy[0].DataRow.length);
+                            }
                         } catch (error) {
                             myEmitterLogs('Sent data Failed of slice: ' + idx);
                         }
@@ -2361,7 +2879,9 @@ all.banks.accounts.poalimAsakimNew = function () {
                                     "Account": resultCopy
                                 }]
                             })
-                            myEmitterLogs('Sent data Successfully of slice: ' + idx);
+                            if (resultCopy && Array.isArray(resultCopy) && resultCopy.length) {
+                                myEmitterLogs((resultCopy[0].BranchNumber + '-' + resultCopy[0].AccountNumber + ' - ') + 'Sent data Successfully of slice: ' + idx + 'DataRow length: ' + resultCopy[0].DataRow.length);
+                            }
                         } catch (error) {
                             myEmitterLogs('Sent data Failed of slice: ' + idx);
                         }
@@ -2373,193 +2893,6 @@ all.banks.accounts.poalimAsakimNew = function () {
                 }
                 return resultArray;
             }
-
-
-            // const asyncOperationAccWithChecks = (result, idx) => {
-            // 	return new Promise(async resolve => {
-            // 		monitorActivityClass.setIntervalActivity();
-            // 		const bankParams = result.BankNumber + '-' + result.BranchNumber + '-' + result.AccountNumber;
-            // 		myEmitterLogs('Running on ' + bankParams + ' which index: ' + idx);
-            // 		let grUrlsChecks = [];
-            // 		const urls = result.DataRow.filter((item, index) => {
-            // 			if (item.imgs && item.imgs.includes('https://biz2.bankhapoalim.co.il')) {
-            // 				item.idx = index;
-            // 				item.accIdx = idx;
-            // 				item.bankParams = result.BankNumber + '' + result.BranchNumber + '' + result.AccountNumber;
-            // 				return item
-            // 			}
-            // 		});
-            // 		if (urls.length) {
-            // 			grUrlsChecks = grUrlsChecks.concat(urls)
-            // 		}
-            // 		myEmitterLogs('Found ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
-            // 		if (grUrlsChecks.length) {
-            // 			myEmitterLogs('Starts to pull ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
-            // 			const getChecks = await resolveSender({
-            // 				urls: grUrlsChecks,
-            // 				isCheck: true,
-            // 				method: "GET",
-            // 				body: null,
-            // 				headers: null,
-            // 			});
-            // 			myEmitterLogs('Finished to pull ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
-            // 			console.log('getChecks', getChecks);
-            // 			let groupChecks = [];
-            // 			getChecks.response.forEach((it) => {
-            // 				if (Array.isArray(it.response)) {
-            // 					groupChecks = groupChecks.concat(it.response.filter((item) => item.urlCheck))
-            // 				}
-            // 			});
-            // 			myEmitterLogs('Found ' + groupChecks.length + ' Checks in ' + bankParams + ' which index: ' + idx);
-            // 			if (groupChecks.length) {
-            // 				myEmitterLogs('Start to pull ' + groupChecks.length + ' Checks multiple ' + poalimAsakimNew.numberOfOperationsChecks + ' checks each time parallel of ' + bankParams + ' account which index: ' + idx);
-            //
-            // 				const groupChecksImg = await resolveSender({
-            // 					urls: groupChecks,
-            // 					method: "GET",
-            // 					body: null,
-            // 					headers: null,
-            // 					isChecks: true,
-            // 				});
-            // 				const groupChecksData = groupChecksImg.response.map((it) => it.response);
-            // 				myEmitterLogs('Got ' + groupChecksImg.length + 'Checks of ' + bankParams + ' which index: ' + idx);
-            //
-            // 				const startedChecks = Date.now();
-            // 				const numberOfOperationsChecks = groupChecksData.length;
-            // 				const listOfArgumentsChecks = groupChecksData;
-            // 				const asyncOperationChecks = url => {
-            // 					return new Promise(async resolve => {
-            // 						const resCheck = await poalimAsakimNew.getImageAndSend(url.urlCheck, url.ImageNameKey);
-            // 						resolve(Object.assign(url, {
-            // 							formData: resCheck,
-            // 						}));
-            // 					})
-            // 				};
-            //
-            // 				async function parallelChecks() {
-            // 					const argsCopy = [].concat(listOfArgumentsChecks.map((val, ind) => ({val, ind})));
-            // 					const result = new Array(listOfArgumentsChecks.length);
-            // 					const promises = new Array(numberOfOperationsChecks).fill(Promise.resolve());
-            //
-            // 					function chainNext(p) {
-            // 						if (argsCopy.length) {
-            // 							const arg = argsCopy.shift();
-            // 							return p.then(() => {
-            // 								const operationPromise = asyncOperationChecks(arg.val).then(r => {
-            // 									result[arg.ind] = r;
-            // 								});
-            // 								return chainNext(operationPromise);
-            // 							});
-            // 						}
-            // 						return p;
-            // 					}
-            //
-            // 					await Promise.all(promises.map(chainNext));
-            // 					return result;
-            // 				}
-            //
-            // 				myEmitterLogs('Start merge between two part of checks from ' + groupChecksImg.length + ' Checks of ' + bankParams + ' which index: ' + idx);
-            // 				const response = await parallelChecks();
-            //
-            // 				myEmitterLogs('Finished merge between two part of checks from ' + groupChecksImg.length + ' Checks of ' + bankParams + ' which index: ' + idx);
-            // 				const elapsedChecks = Date.now() - startedChecks;
-            //
-            // 				myEmitterLogs('Total checks of ' + bankParams + ' which index: ' + idx + ' is: ' + response.length + ' checks');
-            // 				console.log('parallelChecks length before filter', response.length);
-            // 				const dataToSend = response.filter((it) => {
-            // 					if (!it.formData) {
-            // 						it["ImageNameKey"] = "x";
-            // 					}
-            // 					return it.formData;
-            // 				});
-            // 				console.log('parallelChecks length before filter formData ', dataToSend.length);
-            // 				myEmitterLogs('Total checks with images Successfully of ' + bankParams + ' which index: ' + idx + ' is: ' + dataToSend.length + 'checks');
-            //
-            // 				myEmitterLogs('Send all ' + dataToSend.length + ' checks with images Successfully of ' + bankParams + ' which index: ' + idx);
-            // 				const params = Object.assign({
-            // 					urls: dataToSend,
-            // 					method: "POST",
-            // 					body: null,
-            // 					sendToBizibox: all.banks.spiderConfig.sendToServer + "/dataload/cheques/images",
-            // 					headers: {
-            // 						'Authorization': all.banks.core.services.make_base_auth(all.banks.config.user, all.banks.config.pass),
-            // 						'HTML_LOGIN': true
-            // 					},
-            // 					cookies: document.cookie,
-            // 					numberOfOperations: dataToSend.length,
-            // 				});
-            //
-            // 				const output = await new Promise(resolve => {
-            // 					parallelReq(params, function (output) {
-            // 						resolve(output);
-            // 					})
-            // 				});
-            // 				myEmitterLogs('Finished to sent all ' + dataToSend.length + ' checks with images Successfully of ' + bankParams + ' which index: ' + idx);
-            //
-            // 				const outputArr = output.response.map((it) => it.response);
-            // 				outputArr.forEach((it, idx) => {
-            // 					const itOld = JSON.parse(JSON.stringify(it));
-            // 					delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].bankParams;
-            // 					delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].originalEventCreateDate;
-            // 					delete it.urlCheck;
-            // 					delete it.accIdx;
-            // 					delete it.idx;
-            // 					delete it.body;
-            // 					delete it.formData;
-            // 					if (output.response[idx].statusCode !== 200) {
-            // 						it.ImageNameKey = "x"
-            // 					}
-            // 					if (Array.isArray(all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].imgs)) {
-            // 						all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].imgs.push(it)
-            // 					} else {
-            // 						all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].imgs = [it]
-            // 					}
-            // 				});
-            // 				grUrlsChecks.forEach((it, idx) => {
-            // 					if (all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].imgs) {
-            // 						const itOld = JSON.parse(JSON.stringify(it));
-            // 						if ((typeof (all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].imgs) === 'string') &&
-            // 							all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].imgs.includes('https://biz2.bankhapoalim.co.il')) {
-            // 							all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].imgs = [{
-            // 								"ImageNameKey": "x"
-            // 							}];
-            // 							delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].bankParams;
-            // 							delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].originalEventCreateDate;
-            // 						}
-            // 						delete all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].accIdx;
-            // 						delete all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].idx;
-            // 					}
-            // 				});
-            //
-            // 				if (result.DataRow.length) {
-            // 					result.DataRow.forEach((it) => {
-            // 						if (it.idx) {
-            // 							delete it.idx;
-            // 						}
-            // 					});
-            // 				}
-            // 				console.log(result);
-            // 				myEmitterLogs('Send data includes checks uuid to server of ' + bankParams + ' which index: ' + idx);
-            // 				try {
-            // 					await all.banks.core.services.sendOsh({
-            // 						"ExporterId": all.banks.spiderConfig.spiderId,
-            // 						"BankData": [{
-            // 							"TargetId": all.banks.spiderConfig.spiderId,
-            // 							"Token": all.banks.generalVariables.branchNumber,
-            // 							"BankNumber": all.banks.accountDetails.bank.BankNumber,
-            // 							"ExtractDate": all.banks.accountDetails.bank.ExtractDate,
-            // 							"Account": [result]
-            // 						}]
-            // 					})
-            // 					myEmitterLogs('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
-            // 				} catch (error) {
-            // 					myEmitterLogs('Sent data Failed of ' + bankParams + ' which index: ' + idx);
-            // 				}
-            // 			}
-            // 		}
-            // 		resolve(true);
-            // 	})
-            // };
 
             function uploadImgToAWS(url, file) {
                 return new Promise(async resolve => {
@@ -2577,6 +2910,13 @@ all.banks.accounts.poalimAsakimNew = function () {
 
             async function getGroupChecksImg(groupChecks, bankParams, idx, grUrlsChecks, result) {
                 return new Promise(async resolve => {
+                    await poalimAsakimNew.generalReq({
+                        uri: "https://biz2.bankhapoalim.co.il/ng-portals/biz/he/homepage",
+                        family: 4,
+                        timeout: 10000,
+                        method: "GET",
+                        followRedirect: false
+                    });
                     const groupChecksImg = await resolveSender({
                         urls: groupChecks,
                         method: "GET",
@@ -2590,12 +2930,21 @@ all.banks.accounts.poalimAsakimNew = function () {
                     const startedChecks = Date.now();
                     const numberOfOperationsChecks = groupChecksData.length;
                     const listOfArgumentsChecks = groupChecksData;
+                    console.log(groupChecksData);
+                    //debugger
                     const asyncOperationChecks = url => {
                         return new Promise(async resolve => {
-                            const resCheck = await poalimAsakimNew.getImageAndSend(url.urlCheck, url.ImageNameKey);
+                            let resCheck = await poalimAsakimNew.getImageAndSend(url.urlCheck, url.ImageNameKey);
+                            if (!resCheck) {
+                                resCheck = await poalimAsakimNew.getImageAndSend(url.urlCheck, url.ImageNameKey);
+                            }
+                            if (!resCheck) {
+                                resCheck = await poalimAsakimNew.getImageAndSend(url.urlCheck, url.ImageNameKey);
+                            }
                             resolve(Object.assign(url, {
                                 formData: resCheck,
                             }));
+                            // resCheck = null;
                         })
                     };
 
@@ -2632,33 +2981,67 @@ all.banks.accounts.poalimAsakimNew = function () {
                     const dataToSend = response.filter((it) => {
                         if (!it.formData) {
                             it["ImageNameKey"] = "x";
+                            //debugger
                         }
                         return (all.banks.accounts.IND_CHECKS_TO_S3 === 1) ? it : it.formData;
                     });
+                    const checksNotFound = response.filter((it) => {
+                        if (!it.formData) {
+                            it["ImageNameKey"] = "x";
+                            //debugger
+                        }
+                        return (all.banks.accounts.IND_CHECKS_TO_S3 === 1) ? !it : !it.formData;
+                    });
+                    if (dataToSend.length !== response.length) {
+                        myEmitterLogs('Was only able to export ' + dataToSend.length + ' check images from total: ' + response.length + ' , acc:' + bankParams + ' which index: ' + idx + ' is: ' + dataToSend.length + 'checks');
+                        // myEmitterLogs('response: ' + JSON.stringify(response))
+                        // myEmitterLogs('dataToSend: ' + JSON.stringify(dataToSend))
+                        // console.log('response: ', response)
+                        // console.log('dataToSend: ', dataToSend)
+                    }
                     if (all.banks.accounts.IND_CHECKS_TO_S3 === 1) {
                         try {
                             for (let idx111 = 0; idx111 < dataToSend.length; idx111++) {
                                 let text = dataToSend[idx111].formData[dataToSend[idx111].formData.name];
-                                if (!text.includes('data:image/')) {
-                                    text = "data:image/jpeg;base64," + text;
+                                if (text) {
+                                    if (!text.includes('data:image/')) {
+                                        text = "data:image/jpeg;base64," + text;
+                                    }
+
+                                    // fs.writeFile('./Checks/text_' + dataToSend[idx111].formData.name + '.jpg', new Buffer(text.replace(/^data:image\/jpeg;base64,/, ""), 'base64'),function (err) {});
+
+                                    let response = await fetch(text);
+                                    let blob = await response.blob();
+                                    let file = new File([blob], dataToSend[idx111].formData.name, {
+                                        type: 'image/jpeg',
+                                        lastModified: new Date().getTime()
+                                    });
+                                    file['src'] = URL.createObjectURL(file);
+
+                                    let response1 = await fetch(file['src']);
+                                    let blob2 = await response1.arrayBuffer();
+                                    let fileBuffer = Buffer.from(blob2, "base64")
+                                    // fs.writeFile('./Checks/' + dataToSend[idx111].formData.name + '.jpg', fileBuffer , function (err) {});
+
+                                    myEmitterLogs('fileBuffer.length Check img: ' + fileBuffer.length)
+
+                                    dataToSend[idx111]['fileBuffer'] = fileBuffer;
+                                    // const arrayBuffer = await file.arrayBuffer();
+                                    // const blob_new = new Blob([new Uint8Array(arrayBuffer)], {type: file.type });
+                                    // console.log(blob_new);
+                                    dataToSend[idx111]['formData'] = file;
+                                    // text = null;
+                                    // response = null;
+                                    // blob = null;
+                                    // file = null;
+                                    // response1 = null;
+                                    // blob2 = null;
+                                    // fileBuffer = null;
                                 }
-                                const response = await fetch(text);
-                                const blob = await response.blob();
-                                const file = new File([blob], dataToSend[idx111].formData.name, {
-                                    type: 'image/jpeg',
-                                    lastModified: new Date().getTime()
-                                });
-                                file['src'] = URL.createObjectURL(file);
-                                const response1 = await fetch(file['src']);
-                                const blob2 = await response1.arrayBuffer();
-                                const fileBuffer = Buffer.from(blob2, "base64")
-                                dataToSend[idx111]['fileBuffer'] = fileBuffer;
-                                // const arrayBuffer = await file.arrayBuffer();
-                                // const blob_new = new Blob([new Uint8Array(arrayBuffer)], {type: file.type });
-                                // console.log(blob_new);
-                                dataToSend[idx111]['formData'] = file;
                             }
                         } catch (e) {
+                            console.log(e)
+                            myEmitterLogs('IND_CHECKS_TO_S3 error Check img: ' + e)
                         }
                     }
 
@@ -2691,8 +3074,8 @@ all.banks.accounts.poalimAsakimNew = function () {
                             'Authorization': all.banks.core.services.make_base_auth(all.banks.config.user, all.banks.config.pass),
                             'HTML_LOGIN': true
                         },
-                        cookies: document.cookie, //cook,
-                        numberOfOperations: dataToSend.length
+                        cookies: poalimAsakimNew.cookie, //cook,
+                        numberOfOperations: 15
                     });
 
                     const output = await new Promise(resolve => {
@@ -2700,6 +3083,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                             if (all.banks.accounts.IND_CHECKS_TO_S3 === 1) {
                                 const statusCode = outpu.response[0].statusCode;
                                 if (statusCode !== 200) {
+                                    myEmitterLogs('ImageNameKey error ' + statusCode + ' - ' + params.sendToBizibox);
                                     resolve(outpu);
                                     // const params1 = Object.assign({
                                     //     urls: dataToSend,
@@ -2769,13 +3153,18 @@ all.banks.accounts.poalimAsakimNew = function () {
                                         body: true,
                                         sendToBizibox: true,
                                         headers: {
-                                            'Authorization': all.banks.core.services.make_base_auth(all.banks.config.user, all.banks.config.pass),
                                             'Content-Type': 'image/jpeg'
                                         },
-                                        cookies: document.cookie, //cook,
-                                        numberOfOperations: dataToSend.length,
+                                        numberOfOperations: 5
                                     };
                                     parallelReq(params1, function (outpu1) {
+                                        if (outpu1.response && outpu1.response.length) {
+                                            outpu1.response.forEach((it) => {
+                                                if (it.statusCode !== 200) {
+                                                    myEmitterLogs('PUT ImageNameKey error ' + it.statusCode);
+                                                }
+                                            })
+                                        }
                                         resolve(outpu1);
                                     })
                                 }
@@ -2787,57 +3176,89 @@ all.banks.accounts.poalimAsakimNew = function () {
                     });
                     myEmitterLogs('Finished to sent all ' + dataToSend.length + ' checks with images Successfully of ' + bankParams + ' which index: ' + idx);
 
-                    const outputArr = output.response.map((it) => it.response);
+                    let outputArr = output.response.map((it) => it.response);
                     console.log(outputArr)
-                    // debugger
-                    outputArr.forEach((it, idx) => {
-                        const itOld = JSON.parse(JSON.stringify(it));
-                        delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].bankParams;
-                        delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].originalEventCreateDate;
-                        delete it.urlCheck;
-                        delete it.accIdx;
-                        delete it.idx;
-                        delete it.body;
-                        delete it.formData;
-                        if (it.body !== undefined) {
-                            delete it.body;
-                        }
-                        if (it.fileBuffer !== undefined) {
-                            delete it.fileBuffer;
-                        }
-                        if (output.response[idx].statusCode !== 200) {
-                            it.ImageNameKey = "x"
-                        }
-                        if (Array.isArray(all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].imgs)) {
-                            all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].imgs.push(it)
-                        } else {
-                            all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].imgs = [it]
-                        }
-                    });
-                    grUrlsChecks.forEach((it, idx) => {
-                        if (all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].imgs) {
+                    //debugger
+                    try {
+                        outputArr.forEach((it, idx) => {
                             const itOld = JSON.parse(JSON.stringify(it));
-                            if ((typeof (all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].imgs) === 'string') &&
-                                all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].imgs.includes('https://biz2.bankhapoalim.co.il')) {
-                                all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].imgs = [{
-                                    "ImageNameKey": "x"
-                                }];
-                                delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].bankParams;
-                                delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].originalEventCreateDate;
+                            delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].bankParams;
+                            delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].originalEventCreateDate;
+                            delete it.urlCheck;
+                            delete it.accIdx;
+                            delete it.idx;
+                            delete it.body;
+                            delete it.formData;
+                            if (it.body !== undefined) {
+                                delete it.body;
                             }
-                            delete all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].accIdx;
-                            delete all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].idx;
-                        }
-                    });
-
-                    if (result.DataRow.length) {
-                        result.DataRow.forEach((it) => {
-                            if (it.idx) {
-                                delete it.idx;
+                            if (it.fileBuffer !== undefined) {
+                                delete it.fileBuffer;
+                            }
+                            if (output.response[idx].statusCode !== 200) {
+                                myEmitterLogs('ImageNameKey error 400 ' + all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].BranchNumber + '-' + all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].AccountNumber);
+                                //debugger
+                                it.ImageNameKey = "x"
+                            }
+                            if (Array.isArray(all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].imgs)) {
+                                all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].imgs.push(it)
+                            } else {
+                                all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].imgs = [it]
                             }
                         });
+                        if (checksNotFound.length) {
+                            checksNotFound.forEach((it, idx) => {
+                                const itOld = JSON.parse(JSON.stringify(it));
+                                delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].bankParams;
+                                delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].originalEventCreateDate;
+                                delete it.urlCheck;
+                                delete it.accIdx;
+                                delete it.idx;
+                                delete it.body;
+                                if (it.body !== undefined) {
+                                    delete it.body;
+                                }
+                                if (it.fileBuffer !== undefined) {
+                                    delete it.fileBuffer;
+                                }
+                                //debugger
+                                it.ImageNameKey = "x";
+                                if (Array.isArray(all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].imgs)) {
+                                    all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].imgs.push(it)
+                                } else {
+                                    all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].imgs = [it]
+                                }
+                            });
+                            // outputArr = outputArr.concat(checksNotFound)
+                            myEmitterLogs('checksNotFound the array is : ' + JSON.stringify(checksNotFound))
+                        }
+                        grUrlsChecks.forEach((it, idx) => {
+                            if (all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].imgs) {
+                                const itOld = JSON.parse(JSON.stringify(it));
+                                if ((typeof (all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].imgs) === 'string') &&
+                                    all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].imgs.includes('https://biz2.bankhapoalim.co.il')) {
+                                    //debugger
+                                    all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].imgs = [{
+                                        "ImageNameKey": "x"
+                                    }];
+                                    delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].bankParams;
+                                    delete all.banks.generalVariables.allDataArr.BankData[0].Account[it.accIdx].DataRow[it.idx].originalEventCreateDate;
+                                }
+                                delete all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].accIdx;
+                                delete all.banks.generalVariables.allDataArr.BankData[0].Account[itOld.accIdx].DataRow[itOld.idx].idx;
+                            }
+                        });
+                        if (result.DataRow.length) {
+                            result.DataRow.forEach((it) => {
+                                if (it.idx) {
+                                    delete it.idx;
+                                }
+                            });
+                        }
+                    } catch (e) {
+                        myEmitterLogs('error process render images to array: ' + e);
                     }
-                    console.log(result);
+                    console.log('Send data includes checks uuid to server of ' + bankParams + ' which index: ' + idx, result);
                     myEmitterLogs('Send data includes checks uuid to server of ' + bankParams + ' which index: ' + idx);
                     try {
                         await all.banks.core.services.sendOshServer({
@@ -2851,7 +3272,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                             }]
                         })
                         all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
-                        myEmitterLogs('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
+                        myEmitterLogs('Sent data Successfully of ' + bankParams + ' which index: ' + idx + ', DataRow length: ' + result.DataRow.length);
                     } catch (error) {
                         all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
                         myEmitterLogs('Sent data Failed of ' + bankParams + ' which index: ' + idx);
@@ -2877,7 +3298,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                                 item.idx = index;
                                 item.accIdx = idx;
                                 item.bankParams = result.BankNumber + '' + result.BranchNumber + '' + result.AccountNumber;
-                                return item
+                                return item;
                             }
                         });
                         if (urls.length) {
@@ -2885,7 +3306,6 @@ all.banks.accounts.poalimAsakimNew = function () {
                         }
                         myEmitterLogs('Found ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
                         console.log('Found ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
-
                         if (grUrlsChecks.length) {
                             myEmitterLogs('Starts to pull ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
                             console.log('Starts to pull ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
@@ -2913,12 +3333,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                             if (groupChecks.length) {
                                 myEmitterLogs('Start to pull ' + groupChecks.length + ' Checks multiple ' + poalimAsakimNew.numberOfOperationsChecks + ' checks each time parallel of ' + bankParams + ' account which index: ' + idx);
                                 console.log('Start to pull ' + groupChecks.length + ' Checks multiple ' + poalimAsakimNew.numberOfOperationsChecks + ' checks each time parallel of ' + bankParams + ' account which index: ' + idx);
-
-                                if (idx !== 0 && Number.isInteger(idx / Number(poalimAsakimNew.numOfAccForRenewLogin))) {
-                                    await getGroupChecksImg(groupChecks, bankParams, idx, grUrlsChecks, result);
-                                } else {
-                                    await getGroupChecksImg(groupChecks, bankParams, idx, grUrlsChecks, result);
-                                }
+                                await getGroupChecksImg(groupChecks, bankParams, idx, grUrlsChecks, result);
                             } else {
                                 if (result.DataRow.length) {
                                     result.DataRow.forEach((it) => {
@@ -2958,7 +3373,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                                         }]
                                     })
                                     all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
-                                    myEmitterLogs('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
+                                    myEmitterLogs('Sent data Successfully of ' + bankParams + ' which index: ' + idx + ', DataRow length: ' + result.DataRow.length);
                                     console.log('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
 
                                 } catch (error) {
@@ -3009,7 +3424,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                                     }]
                                 })
                                 all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
-                                myEmitterLogs('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
+                                myEmitterLogs('Sent data Successfully of ' + bankParams + ' which index: ' + idx + ', DataRow length: ' + result.DataRow.length);
                                 console.log('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
                             } catch (error) {
                                 all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
@@ -3035,30 +3450,414 @@ all.banks.accounts.poalimAsakimNew = function () {
                 })
             }
 
-            async function parallelAccWithChecks() {
-                const argsCopy = [].concat(all.banks.generalVariables.allDataArr.BankData[0].Account.map((val, ind) => ({
-                    val,
-                    ind
-                })));
-                const result = new Array(all.banks.generalVariables.allDataArr.BankData[0].Account.length);
-                const promises = new Array(poalimAsakimNew.numberOfOperations).fill(Promise.resolve()); //set how many items will run parallel together
+            // async function parallelAccWithChecks() {
+            //     async function asyncOperationAccWithChecks(result, idx) {
+            //         return new Promise(async resolve => {
+            //             monitorActivityClass.setIntervalActivity();
+            //             const bankParams = result.BankNumber + '-' + result.BranchNumber + '-' + result.AccountNumber;
+            //             myEmitterLogs('Running on ' + bankParams + ' which index: ' + idx);
+            //             console.log('Running on ' + bankParams + ' which index: ' + idx);
+            //
+            //             let grUrlsChecks = [];
+            //             const urls = result.DataRow.filter((item, index) => {
+            //                 if (item.imgs && item.imgs.includes('https://biz2.bankhapoalim.co.il')) {
+            //                     item.idx = index;
+            //                     item.accIdx = idx;
+            //                     item.bankParams = result.BankNumber + '' + result.BranchNumber + '' + result.AccountNumber;
+            //                     return item
+            //                 }
+            //             });
+            //             if (urls.length) {
+            //                 grUrlsChecks = grUrlsChecks.concat(urls)
+            //             }
+            //             myEmitterLogs('Found ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
+            //             console.log('Found ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
+            //
+            //             if (grUrlsChecks.length) {
+            //                 myEmitterLogs('Starts to pull ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
+            //                 console.log('Starts to pull ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
+            //
+            //                 const getChecks = await resolveSender({
+            //                     urls: grUrlsChecks,
+            //                     isCheck: true,
+            //                     method: "GET",
+            //                     body: null,
+            //                     headers: null,
+            //                 });
+            //                 myEmitterLogs('Finished to pull ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
+            //                 console.log('Finished to pull ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
+            //
+            //                 console.log('getChecks', getChecks);
+            //                 let groupChecks = [];
+            //                 getChecks.response.forEach((it) => {
+            //                     if (Array.isArray(it.response)) {
+            //                         groupChecks = groupChecks.concat(it.response.filter((item) => item.urlCheck))
+            //                     }
+            //                 });
+            //                 myEmitterLogs('Found ' + groupChecks.length + ' Checks in ' + bankParams + ' which index: ' + idx);
+            //                 console.log('Found ' + groupChecks.length + ' Checks in ' + bankParams + ' which index: ' + idx);
+            //                 if (groupChecks.length) {
+            //                     myEmitterLogs('Start to pull ' + groupChecks.length + ' Checks multiple ' + poalimAsakimNew.numberOfOperationsChecks + ' checks each time parallel of ' + bankParams + ' account which index: ' + idx);
+            //                     console.log('Start to pull ' + groupChecks.length + ' Checks multiple ' + poalimAsakimNew.numberOfOperationsChecks + ' checks each time parallel of ' + bankParams + ' account which index: ' + idx);
+            //                     await getGroupChecksImg(groupChecks, bankParams, idx, grUrlsChecks, result);
+            //                 } else {
+            //                     if (result.DataRow.length) {
+            //                         result.DataRow.forEach((it) => {
+            //                             if (it.imgs && it.imgs.includes('https://biz2.bankhapoalim.co.il')) {
+            //                                 delete it.idx;
+            //                                 it.imgs = null;
+            //                             }
+            //                             if (it.bankParams) {
+            //                                 delete it.bankParams;
+            //                             }
+            //                             if (it.originalEventCreateDate) {
+            //                                 delete it.originalEventCreateDate;
+            //                             }
+            //                             if (it.urlCheck) {
+            //                                 delete it.urlCheck;
+            //                             }
+            //                             if (it.accIdx) {
+            //                                 delete it.accIdx;
+            //                             }
+            //                             if (it.body) {
+            //                                 delete it.body;
+            //                             }
+            //                             if (it.formData) {
+            //                                 delete it.formData;
+            //                             }
+            //                         });
+            //                     }
+            //                     console.log('Sent data Successfully of ' + bankParams + ' which index: ' + idx, result);
+            //                     try {
+            //                         await all.banks.core.services.sendOshServer({
+            //                             "ExporterId": all.banks.spiderConfig.spiderId,
+            //                             "BankData": [{
+            //                                 "TargetId": all.banks.spiderConfig.spiderId,
+            //                                 "Token": all.banks.generalVariables.branchNumber,
+            //                                 "BankNumber": all.banks.accountDetails.bank.BankNumber,
+            //                                 "ExtractDate": all.banks.accountDetails.bank.ExtractDate,
+            //                                 "Account": [result]
+            //                             }]
+            //                         })
+            //                         all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
+            //                         myEmitterLogs('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
+            //                         console.log('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
+            //
+            //                     } catch (error) {
+            //                         all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
+            //                         myEmitterLogs('Sent data Failed of ' + bankParams + ' which index: ' + idx);
+            //                         console.log('Sent data Failed of ' + bankParams + ' which index: ' + idx);
+            //                     }
+            //                 }
+            //             } else {
+            //                 if (result.DataRow.length) {
+            //                     result.DataRow.forEach((it) => {
+            //                         if (it.imgs && it.imgs.includes('https://biz2.bankhapoalim.co.il')) {
+            //                             delete it.idx;
+            //                             it.imgs = null;
+            //                         }
+            //                         if (it.idx) {
+            //                             delete it.idx;
+            //                         }
+            //                         if (it.bankParams) {
+            //                             delete it.bankParams;
+            //                         }
+            //                         if (it.originalEventCreateDate) {
+            //                             delete it.originalEventCreateDate;
+            //                         }
+            //                         if (it.urlCheck) {
+            //                             delete it.urlCheck;
+            //                         }
+            //                         if (it.accIdx) {
+            //                             delete it.accIdx;
+            //                         }
+            //                         if (it.body) {
+            //                             delete it.body;
+            //                         }
+            //                         if (it.formData) {
+            //                             delete it.formData;
+            //                         }
+            //                     });
+            //                 }
+            //                 console.log('Sent data Successfully of ' + bankParams + ' which index: ' + idx, result);
+            //                 try {
+            //                     await all.banks.core.services.sendOshServer({
+            //                         "ExporterId": all.banks.spiderConfig.spiderId,
+            //                         "BankData": [{
+            //                             "TargetId": all.banks.spiderConfig.spiderId,
+            //                             "Token": all.banks.generalVariables.branchNumber,
+            //                             "BankNumber": all.banks.accountDetails.bank.BankNumber,
+            //                             "ExtractDate": all.banks.accountDetails.bank.ExtractDate,
+            //                             "Account": [result]
+            //                         }]
+            //                     })
+            //                     all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
+            //                     myEmitterLogs('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
+            //                     console.log('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
+            //                 } catch (error) {
+            //                     all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
+            //                     myEmitterLogs('Sent data Failed of ' + bankParams + ' which index: ' + idx);
+            //                     console.log('Sent data Failed of ' + bankParams + ' which index: ' + idx);
+            //                 }
+            //             }
+            //
+            //
+            //             if (idx !== 0 && Number.isInteger(idx / Number(poalimAsakimNew.numOfAccForRenewLogin))) {
+            //                 await all.banks.accounts.poalimAsakimNew.renewLogin();
+            //             }
+            //
+            //             resolve(true);
+            //         })
+            //     }
+            //
+            //     const argsCopy = [].concat(all.banks.generalVariables.allDataArr.BankData[0].Account.map((val, ind) => ({
+            //         val,
+            //         ind
+            //     })));
+            //     const result = new Array(all.banks.generalVariables.allDataArr.BankData[0].Account.length);
+            //     const promises = new Array(2).fill(Promise.resolve()); //set how many items will run parallel together
+            //
+            //     function chainNext(p) {
+            //         if (argsCopy.length) {
+            //             const arg = argsCopy.shift();
+            //             return p.then(() => {
+            //                 const operationPromise = asyncOperationAccWithChecks(arg.val, arg.ind).then(r => {
+            //                     result[arg.ind] = r;
+            //                 });
+            //                 return chainNext(operationPromise);
+            //             });
+            //         }
+            //         return p;
+            //     }
+            //
+            //     await Promise.all(promises.map(chainNext));
+            //     return result;
+            // }
 
-                function chainNext(p) {
-                    if (argsCopy.length) {
-                        const arg = argsCopy.shift();
-                        return p.then(() => {
-                            const operationPromise = asyncOperationAccWithChecks(arg.val, arg.ind).then(r => {
-                                result[arg.ind] = r;
-                            });
-                            return chainNext(operationPromise);
-                        });
-                    }
-                    return p;
-                }
 
-                await Promise.all(promises.map(chainNext));
-                return result;
-            }
+            // async function parallelAccWithChecks() {
+            //     const listOfArgumentsChecks = all.banks.generalVariables.allDataArr.BankData[0].Account;
+            //     const listOfArgumentsSliceChecks = (all.banks.generalVariables.allDataArr.BankData[0].Account.length / poalimAsakimNew.numberOfOperations);
+            //     async function asyncOperationAccWithChecks(result, idx) {
+            //         return new Promise(async resolve => {
+            //             monitorActivityClass.setIntervalActivity();
+            //             const bankParams = result.BankNumber + '-' + result.BranchNumber + '-' + result.AccountNumber;
+            //             myEmitterLogs('Running on ' + bankParams + ' which index: ' + idx);
+            //             console.log('Running on ' + bankParams + ' which index: ' + idx);
+            //
+            //             let grUrlsChecks = [];
+            //             const urls = result.DataRow.filter((item, index) => {
+            //                 if (item.imgs && item.imgs.includes('https://biz2.bankhapoalim.co.il')) {
+            //                     item.idx = index;
+            //                     item.accIdx = idx;
+            //                     item.bankParams = result.BankNumber + '' + result.BranchNumber + '' + result.AccountNumber;
+            //                     return item
+            //                 }
+            //             });
+            //             if (urls.length) {
+            //                 grUrlsChecks = grUrlsChecks.concat(urls)
+            //             }
+            //             myEmitterLogs('Found ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
+            //             console.log('Found ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
+            //
+            //             if (grUrlsChecks.length) {
+            //                 myEmitterLogs('Starts to pull ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
+            //                 console.log('Starts to pull ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
+            //
+            //                 const getChecks = await resolveSender({
+            //                     urls: grUrlsChecks,
+            //                     isCheck: true,
+            //                     method: "GET",
+            //                     body: null,
+            //                     headers: null,
+            //                 });
+            //                 myEmitterLogs('Finished to pull ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
+            //                 console.log('Finished to pull ' + grUrlsChecks.length + ' groups of checks of ' + bankParams + ' which index: ' + idx);
+            //
+            //                 console.log('getChecks', getChecks);
+            //                 let groupChecks = [];
+            //                 getChecks.response.forEach((it) => {
+            //                     if (Array.isArray(it.response)) {
+            //                         groupChecks = groupChecks.concat(it.response.filter((item) => item.urlCheck))
+            //                     }
+            //                 });
+            //                 myEmitterLogs('Found ' + groupChecks.length + ' Checks in ' + bankParams + ' which index: ' + idx);
+            //                 console.log('Found ' + groupChecks.length + ' Checks in ' + bankParams + ' which index: ' + idx);
+            //                 if (groupChecks.length) {
+            //                     myEmitterLogs('Start to pull ' + groupChecks.length + ' Checks multiple ' + poalimAsakimNew.numberOfOperationsChecks + ' checks each time parallel of ' + bankParams + ' account which index: ' + idx);
+            //                     console.log('Start to pull ' + groupChecks.length + ' Checks multiple ' + poalimAsakimNew.numberOfOperationsChecks + ' checks each time parallel of ' + bankParams + ' account which index: ' + idx);
+            //                     await getGroupChecksImg(groupChecks, bankParams, idx, grUrlsChecks, result);
+            //                 } else {
+            //                     if (result.DataRow.length) {
+            //                         result.DataRow.forEach((it) => {
+            //                             if (it.imgs && it.imgs.includes('https://biz2.bankhapoalim.co.il')) {
+            //                                 delete it.idx;
+            //                                 it.imgs = null;
+            //                             }
+            //                             if (it.bankParams) {
+            //                                 delete it.bankParams;
+            //                             }
+            //                             if (it.originalEventCreateDate) {
+            //                                 delete it.originalEventCreateDate;
+            //                             }
+            //                             if (it.urlCheck) {
+            //                                 delete it.urlCheck;
+            //                             }
+            //                             if (it.accIdx) {
+            //                                 delete it.accIdx;
+            //                             }
+            //                             if (it.body) {
+            //                                 delete it.body;
+            //                             }
+            //                             if (it.formData) {
+            //                                 delete it.formData;
+            //                             }
+            //                         });
+            //                     }
+            //                     console.log('Sent data Successfully of ' + bankParams + ' which index: ' + idx, result);
+            //                     try {
+            //                         await all.banks.core.services.sendOshServer({
+            //                             "ExporterId": all.banks.spiderConfig.spiderId,
+            //                             "BankData": [{
+            //                                 "TargetId": all.banks.spiderConfig.spiderId,
+            //                                 "Token": all.banks.generalVariables.branchNumber,
+            //                                 "BankNumber": all.banks.accountDetails.bank.BankNumber,
+            //                                 "ExtractDate": all.banks.accountDetails.bank.ExtractDate,
+            //                                 "Account": [result]
+            //                             }]
+            //                         })
+            //                         all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
+            //                         myEmitterLogs('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
+            //                         console.log('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
+            //
+            //                     } catch (error) {
+            //                         all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
+            //                         myEmitterLogs('Sent data Failed of ' + bankParams + ' which index: ' + idx);
+            //                         console.log('Sent data Failed of ' + bankParams + ' which index: ' + idx);
+            //                     }
+            //                 }
+            //             } else {
+            //                 if (result.DataRow.length) {
+            //                     result.DataRow.forEach((it) => {
+            //                         if (it.imgs && it.imgs.includes('https://biz2.bankhapoalim.co.il')) {
+            //                             delete it.idx;
+            //                             it.imgs = null;
+            //                         }
+            //                         if (it.idx) {
+            //                             delete it.idx;
+            //                         }
+            //                         if (it.bankParams) {
+            //                             delete it.bankParams;
+            //                         }
+            //                         if (it.originalEventCreateDate) {
+            //                             delete it.originalEventCreateDate;
+            //                         }
+            //                         if (it.urlCheck) {
+            //                             delete it.urlCheck;
+            //                         }
+            //                         if (it.accIdx) {
+            //                             delete it.accIdx;
+            //                         }
+            //                         if (it.body) {
+            //                             delete it.body;
+            //                         }
+            //                         if (it.formData) {
+            //                             delete it.formData;
+            //                         }
+            //                     });
+            //                 }
+            //                 console.log('Sent data Successfully of ' + bankParams + ' which index: ' + idx, result);
+            //                 try {
+            //                     await all.banks.core.services.sendOshServer({
+            //                         "ExporterId": all.banks.spiderConfig.spiderId,
+            //                         "BankData": [{
+            //                             "TargetId": all.banks.spiderConfig.spiderId,
+            //                             "Token": all.banks.generalVariables.branchNumber,
+            //                             "BankNumber": all.banks.accountDetails.bank.BankNumber,
+            //                             "ExtractDate": all.banks.accountDetails.bank.ExtractDate,
+            //                             "Account": [result]
+            //                         }]
+            //                     })
+            //                     all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
+            //                     myEmitterLogs('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
+            //                     console.log('Sent data Successfully of ' + bankParams + ' which index: ' + idx);
+            //                 } catch (error) {
+            //                     all.banks.accounts.poalimAsakimNew.counterAccWithChecksSender += 1;
+            //                     myEmitterLogs('Sent data Failed of ' + bankParams + ' which index: ' + idx);
+            //                     console.log('Sent data Failed of ' + bankParams + ' which index: ' + idx);
+            //                 }
+            //             }
+            //
+            //
+            //             if (idx !== 0 && Number.isInteger(idx / Number(poalimAsakimNew.numOfAccForRenewLogin))) {
+            //                 await all.banks.accounts.poalimAsakimNew.renewLogin();
+            //             }
+            //
+            //             resolve(true);
+            //         })
+            //     }
+            //
+            //     async function parallelSlicesChecks(idxArr) {
+            //         console.log(('תחילת ריצת '
+            //             +
+            //             poalimAsakimNew.numberOfOperations
+            //             +
+            //             ' חשבונות נוספים למשיכת שיקים, אינדקס מספר: '
+            //             +
+            //             idxArr));
+            //         const slicePos = (Number(poalimAsakimNew.numberOfOperations) * idxArr);
+            //         const argsCopy = [].concat(listOfArgumentsChecks.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperations))).map((val, ind) => ({
+            //             val,
+            //             ind
+            //         })));
+            //         const result = new Array(listOfArgumentsChecks.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperations))).length);
+            //         const promises = new Array(Number(poalimAsakimNew.numberOfOperations)).fill(Promise.resolve()); //set how many items will run parallel together
+            //
+            //         function chainNext(p) {
+            //             if (argsCopy.length) {
+            //                 const arg = argsCopy.shift();
+            //                 return p.then(() => {
+            //                     const operationPromise = asyncOperationAccWithChecks(arg.val, arg.ind).then(r => {
+            //                         console.log('סיום ריצת חשבון למשיכת שיקים-----' + arg.ind, r);
+            //                         result[arg.ind] = r;
+            //                     });
+            //                     return chainNext(operationPromise);
+            //                 });
+            //             }
+            //             return p;
+            //         }
+            //
+            //         await Promise.all(promises.map(chainNext));
+            //         console.log(('סיום ריצת '
+            //             +
+            //             Number(poalimAsakimNew.numberOfOperationsCards)
+            //             +
+            //             ' חשבונות נוספים למשיכת שיקים, אינדקס מספר: '
+            //             +
+            //             idxArr), result);
+            //         return result;
+            //     }
+            //
+            //
+            //     let resultArray = [];
+            //     let listNum = 0;
+            //     for (let idx = 0; idx < listOfArgumentsSliceChecks; idx++) {
+            //         const result = await parallelSlicesChecks(idx);
+            //         resultArray = resultArray.concat(result);
+            //         // if (idx !== 0 && Number.isInteger(idx / Number(poalimAsakimNew.numOfAccForRenewLogin))) {
+            //         //     await all.banks.accounts.poalimAsakimNew.renewLogin();
+            //         // }
+            //         const currentNumAcc = ((idx + 1) * Number(poalimAsakimNew.numOfAccForRenewLogin));
+            //         const floorNum = Math.floor(currentNumAcc / Number(poalimAsakimNew.numOfAccForRenewLogin))
+            //         if (listNum !== floorNum) {
+            //             listNum = floorNum;
+            //             await all.banks.accounts.poalimAsakimNew.renewLogin();
+            //         }
+            //         await timeoutSpace();
+            //     }
+            //     return resultArray;
+            // }
+
 
             if (!ARR_TRANS_DAY_TO_RUN.length || (ARR_TRANS_DAY_TO_RUN.length === 1 && ARR_TRANS_DAY_TO_RUN[0].TRANS_DAY_TO_RUN === 0)) {
                 all.banks.generalVariables.numChecksDrawn = 0;
@@ -3069,7 +3868,6 @@ all.banks.accounts.poalimAsakimNew = function () {
                     const elapsed = Date.now() - started;
                     myEmitterLogs('Finished to collect all data Osh and Transfers of all ' + res.length + ' accounts at ' + (elapsed / 1000) + 'ms');
                     console.log('Finished to collect all data Osh and Transfers of all ' + res.length + ' accounts at ' + (elapsed / 1000) + 'ms');
-
 
                     myEmitterLogs('Start to prepare Checks, A division of accounts types that include checks or not at all');
                     console.log('Start to prepare Checks, A division of accounts types that include checks or not at all');
@@ -3093,7 +3891,6 @@ all.banks.accounts.poalimAsakimNew = function () {
                     try {
                         const listOfArgumentArr = withoutImg;
                         const listOfArgumentsSlice = (withoutImg.length / poalimAsakimNew.numberOfOperations);
-
                         const asyncOperationSender = param => {
                             return new Promise(async resolve => {
                                 try {
@@ -3157,7 +3954,6 @@ all.banks.accounts.poalimAsakimNew = function () {
                     });
                     myEmitterLogs('Found ' + withImg.length + ' accounts with some check');
                     console.log('Found ' + withImg.length + ' accounts with some check');
-
                     all.banks.generalVariables.allDataArr.BankData[0].Account = withImg;
                     getChecks().then(() => { //parallelAccWithChecks
                         myEmitterLogs('Finished Osh!');
@@ -3167,6 +3963,16 @@ all.banks.accounts.poalimAsakimNew = function () {
                         myEmitterLogs(29);
                         all.banks.generalVariables.numChecksDrawn = 0;
                         all.banks.generalVariables.numChecksNotWithdrawn = 0;
+                        all.banks.generalVariables.allDataArr = {
+                            "ExporterId": all.banks.spiderConfig.spiderId,
+                            "BankData": [{
+                                "TargetId": all.banks.spiderConfig.spiderId,
+                                "Token": all.banks.generalVariables.branchNumber,
+                                "BankNumber": all.banks.accountDetails.bank.BankNumber,
+                                "ExtractDate": all.banks.accountDetails.bank.ExtractDate,
+                                "Account": []
+                            }]
+                        };
                         poalimAsakimNew.loadAsharaiAll();
                     })
                 })
@@ -3174,8 +3980,6 @@ all.banks.accounts.poalimAsakimNew = function () {
         } catch (err) {
             writeLog('loadOsh err: ', err);
         }
-
-
     };
     poalimAsakimNew.loadAsharaiAll = async function () {
         all.banks.generalVariables.allDataArrAshrai = [];
@@ -3202,15 +4006,16 @@ all.banks.accounts.poalimAsakimNew = function () {
                 })
             });
         console.log('Length of accounts with cards: ' + ARR_IND_CCARD_DATA.length);
-
         const listOfArguments = ARR_IND_CCARD_DATA;
         const listOfArgumentsSlice = (ARR_IND_CCARD_DATA.length / Number(poalimAsakimNew.numberOfOperationsCards));
-
+        if (ARR_IND_CCARD_DATA.length) {
+            myEmitterLogs(14);
+        }
         const asyncOperation = param => {
             return new Promise(async resolve => {
                 try {
                     monitorActivityClass.setIntervalActivity();
-                    await resolveCookies();
+                    // await resolveCookies();
                     console.log('step 1------ Running Index account: ' + param.idx);
 
                     // console.log(all.banks.core.services.logAlertsBanks(30, JSON.stringify(all.banks.accountDetails.bank.arrDDAll[param.idx])));
@@ -3224,7 +4029,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                     });
                     data = data.response[0].response;
                     console.log('step 2------ Data Cards type=previous Index account: ' + param.idx + ' is: ', data);
-                    let prevMonthsArr = data && Array.isArray(data.dates) && data.dates.length > 0 ? data.dates : undefined;
+                    // let prevMonthsArr = data && Array.isArray(data.dates) && data.dates.length > 0 ? data.dates : undefined;
                     // if (data.messageCode !== 575) {
                     //     if (data && Array.isArray(data.plasticCardData) && data.plasticCardData.length > 0) {
                     //         let typeOfCards = [];
@@ -3657,12 +4462,10 @@ all.banks.accounts.poalimAsakimNew = function () {
                                 for (let idx = 0; idx < data.cards.length; idx++) {
                                     const card = data.cards[idx]
                                     if (card) {
-                                        const recordsProcessed = [];
-                                        const cardIdentification = card.cardIdentification
-
+                                        let recordsProcessed = [];
+                                        const cardIdentification = card.cardIdentification;
                                         if (card.cardBookedBalances.nationalTransactionsTotal && card.cardBookedBalances.nationalTransactionsTotal.length) {
                                             card.cardBookedBalances.nationalTransactionsTotal = card.cardBookedBalances.nationalTransactionsTotal.filter(it => it.currentAmount !== 0);
-
                                             for (let idx_total = 0; idx_total < card.cardBookedBalances.nationalTransactionsTotal.length; idx_total++) {
                                                 const cardBookedBalances = card.cardBookedBalances.nationalTransactionsTotal[idx_total];
                                                 const debitEventOrigin = 1;
@@ -3743,7 +4546,6 @@ all.banks.accounts.poalimAsakimNew = function () {
                                         }
                                         if (card.cardBookedBalances.internationalTransactionsTotal && card.cardBookedBalances.internationalTransactionsTotal.length) {
                                             card.cardBookedBalances.internationalTransactionsTotal = card.cardBookedBalances.internationalTransactionsTotal.filter(it => it.currentAmount !== 0);
-
                                             for (let idx_total = 0; idx_total < card.cardBookedBalances.internationalTransactionsTotal.length; idx_total++) {
                                                 const cardBookedBalances = card.cardBookedBalances.internationalTransactionsTotal[idx_total];
                                                 const debitEventOrigin = 2;
@@ -3851,20 +4653,29 @@ all.banks.accounts.poalimAsakimNew = function () {
                                 })
                             }
                             console.log('step ' + (2 + cycleIdx) + ' ------ Data Cards type=current&view=totals Index account: ' + param.idx + ' is: ', data);
-                            const arrToSend = await processTransactionsCurrent(data, param, typeOfCards);
+                            let arrToSend = await processTransactionsCurrent(data, param, typeOfCards);
                             if (arrToSend && arrToSend.length) {
                                 try {
                                     await all.banks.core.services.sendCardsServer(arrToSend);
+                                    data = null;
+                                    resp = null;
+                                    res_cur = null;
+                                    arrToSend = null;
+                                    regTypeOfCards = null;
                                 } catch (error) {
                                 }
                             }
                         } else {
                             if (data.creditCardMyHomePageDetailsDataList && data.creditCardMyHomePageDetailsDataList.length) {
                                 console.log('step ' + (2 + cycleIdx) + ' ------ Data Cards type=current&view=totals Index account: ' + param.idx + ' is: ', data);
-                                const arrToSend = await processTransactionsCurrent(data, param, []);
+                                let arrToSend = await processTransactionsCurrent(data, param, []);
                                 if (arrToSend && arrToSend.length) {
                                     try {
                                         await all.banks.core.services.sendCardsServer(arrToSend);
+                                        data = null;
+                                        resp = null;
+                                        res_cur = null;
+                                        arrToSend = null;
                                     } catch (error) {
                                     }
                                 }
@@ -3875,7 +4686,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                     resolve(true);
                 } catch (errorScope) {
                     console.log(errorScope)
-                    debugger
+                    // debugger
                     resolve(true);
                 }
             })
@@ -3889,13 +4700,13 @@ all.banks.accounts.poalimAsakimNew = function () {
                     console.log('start callWs')
                     monitorActivityClass.setIntervalActivity();
                     let params = Object.assign(item, {
-                        cookies: document.cookie,
+                        cookies: poalimAsakimNew.cookie,
                         token: poalimAsakimNew.xsrfToken,
                         numberOfOperations: poalimAsakimNew.numberOfOperationsCards
                     });
-                    if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
-                        params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
-                    }
+                    // if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
+                    //     params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
+                    // }
                     parallelReq(params, function (output) {
                         console.log('got res callWs')
                         monitorActivityClass.setIntervalActivity();
@@ -3911,11 +4722,11 @@ all.banks.accounts.poalimAsakimNew = function () {
                                     all.banks.accounts.poalimAsakimNew.middleOfWork = true;
                                     all.banks.accounts.poalimAsakimNew.renewLogin().then(() => {
                                         if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                                            let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                            let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
                                             if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                                err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                                err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
                                             }
-                                            all.banks.core.services.errorLog(err);
+                                            writeLog(err);
                                             poalimAsakimNew.haltAndWaitForReload = true;
                                             poalimAsakimNew.logOutNew();
                                             return;
@@ -3927,13 +4738,13 @@ all.banks.accounts.poalimAsakimNew = function () {
                                 }
                             } else {
                                 if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                                    let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                    let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
                                     if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                        err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                        err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
                                     }
-                                    all.banks.core.services.errorLog(err);
+                                    writeLog(err);
                                     poalimAsakimNew.haltAndWaitForReload = true;
-                                    myEmitterLogs('Sent data Successfully');
+                                    // myEmitterLogs('Sent data Successfully');
                                     poalimAsakimNew.logOutNew();
                                     return;
                                 }
@@ -4082,7 +4893,7 @@ all.banks.accounts.poalimAsakimNew = function () {
 
         function processTransactionsCurrent(data, param, typeOfCards) {
             return new Promise(async resolve => {
-                const arr = [];
+                let arr = [];
                 try {
                     if (data && data.messageCode == 575 || (data.plasticCardData)) {
                         if (data.messageCode == 575) {
@@ -4196,12 +5007,15 @@ all.banks.accounts.poalimAsakimNew = function () {
                             if (data.creditCardMyHomePageDetailsDataList.length) {
                                 loadRowsForeign(data, function () {
                                     resolve(arr);
+                                    arr = null;
                                 });
                             } else {
                                 resolve(arr);
+                                arr = null;
                             }
                         } else {
                             resolve(arr);
+                            arr = null;
                         }
                     }
 
@@ -4323,6 +5137,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                                     break;
                                 }
                             } else {
+                                arrRows = null;
                                 cb();
                             }
                         } catch (errs) {
@@ -4332,6 +5147,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                     }
                 } catch (err) {
                     resolve(arr);
+                    arr = null;
                 }
             });
         }
@@ -4406,10 +5222,10 @@ all.banks.accounts.poalimAsakimNew = function () {
             const elapsed = Date.now() - started;
             console.log(all.banks.generalVariables.allDataArrAshrai);
             console.log('Found ' + all.banks.generalVariables.allDataArrAshrai.length + ' of allDataArrAshrai at ' + (elapsed / 1000) + ' ms');
+            all.banks.generalVariables.allDataArrAshrai = [];
             // clearInterval(alive);
             poalimAsakimNew.loadMatahAll()
         });
-
     }
     poalimAsakimNew.loadMatahAll = async function () {
         const started = Date.now();
@@ -4475,15 +5291,15 @@ all.banks.accounts.poalimAsakimNew = function () {
                     BranchNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[1]),
                 })
             });
-
-
         const listOfArguments = ARR_TRANS_DAY_TO_RUN;
         const listOfArgumentsSlice = (ARR_TRANS_DAY_TO_RUN.length / Number(poalimAsakimNew.numberOfOperationsMatah));
-
+        if (ARR_TRANS_DAY_TO_RUN.length) {
+            myEmitterLogs(34);
+        }
         const asyncOperation = param => {
             return new Promise(async resolve => {
                 monitorActivityClass.setIntervalActivity();
-                await resolveCookies();
+                // await resolveCookies();
                 console.log('step 1------ Running Index account: ' + param.idx);
                 console.log(all.banks.core.services.logAlertsBanks(30, JSON.stringify(all.banks.accountDetails.bank.arrDDAll[param.idx])));
 
@@ -4518,7 +5334,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                                 'BankNumber': param.BankNumber,
                                 'AccountNumber': param.AccountNumber,
                                 'BranchNumber': param.BranchNumber,
-                                'Balance': accInList.currentBalance,
+                                'Balance': accInList.currentBalance === null ? 0 : accInList.currentBalance,
                                 'AccountCredit': null,
                                 "BankAccountTypeId": accInList.detailedAccountTypeCode,
                                 "CurrencyId": all.banks.core.services.getTypeCurrencyAll(accInList.currencySwiftCode, true),
@@ -4627,20 +5443,20 @@ all.banks.accounts.poalimAsakimNew = function () {
                 const callWs = function () {
                     let timeOfTriedOn = 0;
                     let params = Object.assign(item, {
-                        cookies: document.cookie,
+                        cookies: poalimAsakimNew.cookie,
                         token: poalimAsakimNew.xsrfToken,
                         numberOfOperations: item.isChecks ? poalimAsakimNew.numberOfOperationsChecks : ((item.isCheck) ? poalimAsakimNew.numberOfOperationsChecks : poalimAsakimNew.numberOfOperationsMatah),
                     })
-                    if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
-                        params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
-                    }
+                    // if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
+                    //     params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
+                    // }
                     parallelReq(params, function (output) {
                         if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                            let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                            let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
                             if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
                             }
-                            all.banks.core.services.errorLog(err);
+                            writeLog(err);
                             poalimAsakimNew.haltAndWaitForReload = true;
                             poalimAsakimNew.logOutNew();
                             return;
@@ -4795,286 +5611,1735 @@ all.banks.accounts.poalimAsakimNew = function () {
             const elapsed = Date.now() - started;
             myEmitterLogs('Finished to collect all data Osh and Transfers of all accounts at ' + (elapsed / 1000) + 'ms');
             // clearInterval(alive);
+            all.banks.generalVariables.allDataArr = {
+                "ExporterId": all.banks.spiderConfig.spiderId,
+                "BankData": [{
+                    "TargetId": all.banks.spiderConfig.spiderId,
+                    "Token": all.banks.generalVariables.branchNumber,
+                    "BankNumber": all.banks.accountDetails.bank.BankNumber,
+                    "ExtractDate": all.banks.accountDetails.bank.ExtractDate,
+                    "Account": []
+                }]
+            };
             myEmitterLogs('Start to prepare Checks, A division of accounts types that include checks or not at all');
             poalimAsakimNew.loadDepositsNew();
         });
     };
-    poalimAsakimNew.sendOshCtrl = function () {
-        all.banks.core.services.sendOsh(all.banks.generalVariables.allDataArr)
-            .then(function (arr) {
-                myEmitterLogs(29);
-                all.banks.generalVariables.numChecksDrawn = 0;
-                all.banks.generalVariables.numChecksNotWithdrawn = 0;
+    poalimAsakimNew.loadDepositsNew = async function () {
+        const started = Date.now();
+        const ARR_TRANS_DAY_TO_RUN = all.banks.accountDetails.bank.arrDDAll.filter((it) => (it.IND_NILVIM > 0)).map((item, idx) => {
+            return Object.assign(item, {
+                idx,
+                bankParams: ("12-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[1] + "-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
+                BankNumber: 12,
+                AccountNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
+                BranchNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[1]),
+            })
+        });
 
-                if (!poalimAsakimNew.newAcc) {
-                    if (all.banks.accounts.poalimAsakimNew.vddVal.IND_CCARD_DATA > 0) {
-                        myEmitterLogs(14);
-                        all.banks.accounts.poalimAsakimNew.loadAsharaiPrev(all.banks.accounts.poalimAsakimNew.vddVal.BANK_SNIF_ACCOUNT_KEY)
-                    } else if (all.banks.accounts.poalimAsakimNew.vddVal.IND_NILVIM > 0) {
-                        myEmitterLogs(17);
-                        all.banks.accounts.poalimAsakimNew.loadDeposits();
-                    } else if (all.banks.accounts.poalimAsakimNew.vddVal.MATAH_DAY_TO_RUN > 0) {
-                        myEmitterLogs(34);
-                        all.banks.accounts.poalimAsakimNew.loadMatah();
-                    } else {
-                        if (all.banks.accountDetails.bank.arrDDAll.length > 1 && (all.banks.accounts.poalimAsakimNew.accNum + 1 < all.banks.accountDetails.bank.arrDDAll.length)) {
-                            all.banks.accounts.poalimAsakimNew.accNum = all.banks.accounts.poalimAsakimNew.accNum + 1;
-                            all.banks.accounts.poalimAsakimNew.loadOsh();
-                        } else {
-                            all.banks.accounts.poalimAsakimNew.logOut()
-                        }
-                    }
-                } else {
-                    if (all.banks.accounts.poalimAsakimNew.vddVal.IND_CCARD_DATA > 0) {
-                        myEmitterLogs(14);
-                        poalimAsakimNew.counterCardPrev = 0;
-                        all.banks.generalVariables.allDataArrAshrai = [];
-                        all.banks.accounts.poalimAsakimNew.loadAsharaiPrevNew();
-                    } else if (all.banks.accounts.poalimAsakimNew.vddVal.IND_NILVIM > 0) {
-                        myEmitterLogs(17);
-                        all.banks.accounts.poalimAsakimNew.loadDepositsNew();
-                    } else if (all.banks.accounts.poalimAsakimNew.vddVal.MATAH_DAY_TO_RUN > 0) {
-                        myEmitterLogs(34);
-                        all.banks.accounts.poalimAsakimNew.loadMatahNew();
-                    } else {
-                        if (all.banks.accountDetails.bank.arrDDAll.length > 1 && (all.banks.accounts.poalimAsakimNew.accNum + 1 < all.banks.accountDetails.bank.arrDDAll.length)) {
-                            all.banks.accounts.poalimAsakimNew.accNum = all.banks.accounts.poalimAsakimNew.accNum + 1;
-                            all.banks.accounts.poalimAsakimNew.loadOsh();
-                        } else {
-                            poalimAsakimNew.logOutNew();
-                        }
-                    }
-                }
-            })
-            .fail(function (error, resErr) {
-                if (error == 'discard') {
-                    all.banks.accounts.poalimAsakimNew.sendOshCtrl()
-                }
-            })
-    };
-    poalimAsakimNew.sendChecksCtrl = function (formData) {
-        all.banks.core.services.sendChecks(formData)
-            .then(function (arr) {
-                all.banks.generalVariables.numChecksDrawn += 1;
-            })
-            .fail(function (error, resErr) {
-                if (error == 'discard') {
-                    all.banks.accounts.poalimAsakimNew.sendChecksCtrl(formData)
-                }
-            })
-    };
-    poalimAsakimNew.sendChecksCtrlNew = function (formData) {
-        var dfd = jQuery.Deferred();
+        const listOfArguments = ARR_TRANS_DAY_TO_RUN;
+        const listOfArgumentsSlice = (ARR_TRANS_DAY_TO_RUN.length / Number(poalimAsakimNew.numberOfOperationsNilvim));
 
-        function senderChecks() {
-            all.banks.core.services.sendChecks(formData)
-                .then(function (arr) {
-                    if (arr.status == undefined) {
-                        dfd.resolve(true);
-                    } else if (arr.status !== 200) {
-                        dfd.reject(true);
-                    }
-                    all.banks.generalVariables.numChecksDrawn = all.banks.generalVariables.numChecksDrawn + 1;
-                })
-                .fail(function (error, resErr) {
-                    if (error == 'discard') {
-                        senderChecks()
-                    }
-                });
+        if (ARR_TRANS_DAY_TO_RUN.length) {
+            myEmitterLogs(17);
         }
+        const asyncOperation = param => {
+            return new Promise(async resolve => {
+                monitorActivityClass.setIntervalActivity();
+                // await resolveCookies();
+                console.log('step 1------ Running Index account: ' + param.idx);
+                console.log(all.banks.core.services.logAlertsBanks(30, JSON.stringify(all.banks.accountDetails.bank.arrDDAll[param.idx])));
 
-        senderChecks()
-        return dfd.promise();
-    };
-    poalimAsakimNew.sendCardsCtrl = function () {
-        if (poalimAsakimNew.haltAndWaitForReload === true) {
-            return;
-        }
+                const text = "מתחיל Deposits לחשבון" + " " + all.banks.accountDetails.bank.arrDDAll[param.idx].BANK_SNIF_ACCOUNT_KEY;
+                console.log(all.banks.core.services.logAlertsBanks(10, text));
 
-        all.banks.core.services.sendCards(all.banks.generalVariables.allDataArrAshrai)
-            .then(function (arr) {
-                all.banks.generalVariables.allDataArrAshrai = [];
-                if (all.banks.accounts.poalimAsakimNew.vddVal.IND_NILVIM > 0) {
-                    if (!poalimAsakimNew.newAcc) {
-                        myEmitterLogs(17);
-                        all.banks.accounts.poalimAsakimNew.loadDeposits();
-                    } else {
-                        myEmitterLogs(17);
-                        poalimAsakimNew.loadDepositsNew();
-                    }
-                } else if (all.banks.accounts.poalimAsakimNew.vddVal.MATAH_DAY_TO_RUN > 0) {
-                    if (!poalimAsakimNew.newAcc) {
-                        myEmitterLogs(34);
-                        all.banks.accounts.poalimAsakimNew.loadMatah();
-                    } else {
-                        myEmitterLogs(34);
-                        all.banks.accounts.poalimAsakimNew.loadMatahNew();
-                    }
-                } else {
-                    all.banks.accounts.poalimAsakimNew.accNum = all.banks.accounts.poalimAsakimNew.accNum + 1;
-                    all.banks.accounts.poalimAsakimNew.loadOsh();
-                }
-            })
-            .fail(function (error, resErr) {
-                if (error == 'discard') {
-                    all.banks.accounts.poalimAsakimNew.sendCardsCtrl()
-                }
-            })
-    };
-    poalimAsakimNew.sendPikdonotCtrl = function (allDataArrDeposits) {
-        return new Promise(resolve => {
-            if (poalimAsakimNew.haltAndWaitForReload === true) {
-                return;
-            }
-            const callWs = function () {
-                all.banks.core.services.sendPikdonot(allDataArrDeposits)
-                    .then(function (arr) {
-                        myEmitterLogs(21);
-                        resolve(true);
-                    })
-                    .fail(async function (error, resErr) {
-                        if (error === 'discard') {
-                            callWs()
-                        } else {
-                            resolve(true);
-                        }
+
+                let allDataArrDeposits = [];
+                let req_savingsDeposits = false;
+                try {
+                    var urlXhr = "https://biz2.bankhapoalim.co.il/ServerServices/deposits-and-savings/composite?accountId=" + param.bankParams + "&view=totals";
+                    let data = await resolveSender({
+                        urls: [urlXhr],
+                        method: "GET",
+                        body: null,
+                        headers: null,
                     });
-            }
-            callWs();
-        });
-    };
-    poalimAsakimNew.sendLoanCtrl = function (allDataArrLoan) {
-        return new Promise(resolve => {
-            if (poalimAsakimNew.haltAndWaitForReload === true) {
-                return;
-            }
-            const callWs = function () {
-                all.banks.core.services.sendLoan(allDataArrLoan)
-                    .then(function (arr) {
-                        myEmitterLogs(19);
-                        resolve(true);
-                    })
-                    .fail(function (error, resErr) {
-                        if (error == 'discard') {
-                            callWs()
-                        } else {
-                            resolve(true);
+                    if (data && data.response && data.response.length && data.response[0].response) {
+                        data = data.response[0].response;
+                        if (data && data.messageCode === undefined) {
+                            var url1 = "https://biz2.bankhapoalim.co.il/ServerServices/deposits-and-savings/deposits?accountId=" + param.bankParams + "&view=details";
+                            let res = await resolveSender({
+                                urls: [url1],
+                                method: "GET",
+                                body: null,
+                                headers: null,
+                            });
+                            if (res && res.response && res.response.length && res.response[0].response) {
+                                res = res.response[0].response;
+                                if (res && res.list !== undefined && res.list.length) {
+                                    for (let indx = 0; indx < res.list.length; indx++) {
+                                        const va = res.list[indx];
+                                        for (let idx11 = 0; idx11 < va.data.length; idx11++) {
+                                            const v = va.data[idx11];
+                                            allDataArrDeposits.push({
+                                                "TargetId": all.banks.accountDetails.bank.targetId,
+                                                "Token": all.banks.accountDetails.bank.token,
+                                                "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
+                                                "ExporterId": all.banks.spiderConfig.spiderId,
+                                                'BankNumber': param.BankNumber,
+                                                'AccountNumber': param.AccountNumber,
+                                                'BranchNumber': param.BranchNumber,
+                                                "TypeName": v.shortProductName,
+                                                "DepositTotal": v.principalAmount,
+                                                "DepositAsTotal": v.revaluedTotalAmount,
+                                                "DueDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.paymentDate)),
+                                                "DepositDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.agreementOpeningDate)),
+                                                "DepositExistStation": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.paymentDate)),
+                                                "DepositNumber": v.depositSerialId,
+                                                "DepositInterest": v.adjustedInterest
+                                            });
+                                        }
+                                    }
+                                    req_savingsDeposits = true;
+                                } else {
+                                    req_savingsDeposits = true;
+                                }
+                            }
+                        }
+                    }
+                } catch (err) {
+                    req_savingsDeposits = true;
+                }
+
+                if (req_savingsDeposits) {
+                    try {
+                        var urls = "https://biz2.bankhapoalim.co.il/ServerServices/deposits-and-savings/savingsDeposits?accountId=" + param.bankParams + "&view=details";
+                        let data = await resolveSender({
+                            urls: [urls],
+                            method: "GET",
+                            body: null,
+                            headers: null,
+                        });
+                        if (data && data.response && data.response.length && data.response[0].response) {
+                            data = data.response[0].response;
+                            if (data && data.list !== undefined && data.list.length) {
+                                $(data.list).each(function (indx, va) {
+                                    $(va.data).each(function (idx, v) {
+                                        allDataArrDeposits.push({
+                                            "TargetId": all.banks.accountDetails.bank.targetId,
+                                            "Token": all.banks.accountDetails.bank.token,
+                                            'BankNumber': param.BankNumber,
+                                            'AccountNumber': param.AccountNumber,
+                                            'BranchNumber': param.BranchNumber,
+                                            "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
+                                            "ExporterId": all.banks.spiderConfig.spiderId,
+                                            "TypeName": v.shortSavingDepositName,
+                                            "DepositTotal": v.principalAmount,
+                                            "DepositAsTotal": v.revaluedBalance,
+                                            "DueDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.agreementOpeningDate)),
+                                            "DepositDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.agreementOpeningDate)),
+                                            "DepositExistStation": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.paymentDate)),
+                                            "DepositNumber": v.eventNumber,
+                                            "DepositInterest": null
+                                        });
+                                    })
+                                });
+                            } else {
+
+                            }
+                        }
+                    } catch (err) {
+
+                    }
+                }
+
+
+                try {
+                    if (allDataArrDeposits.length) {
+                        console.log('Last step ------ found ' + allDataArrDeposits.length + ' Pikdonot of Index account: ' + param.idx);
+                        await all.banks.core.services.sendPikdonotServer(allDataArrDeposits);
+                        allDataArrDeposits = null;
+                    }
+                    resolve(true);
+                } catch (error) {
+                    resolve(true);
+                }
+            })
+        };
+
+        function resolveSender(item) {
+            return new Promise(resolve => {
+                let timeToTry = 0;
+                const callWs = function () {
+                    timeToTry += 1;
+                    console.log('start callWs')
+                    monitorActivityClass.setIntervalActivity();
+                    let params = Object.assign(item, {
+                        cookies: poalimAsakimNew.cookie,
+                        token: poalimAsakimNew.xsrfToken,
+                        numberOfOperations: poalimAsakimNew.numberOfOperationsNilvim
+                    });
+                    // if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
+                    //     params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
+                    // }
+                    parallelReq(params, function (output) {
+                        console.log('got res callWs')
+                        monitorActivityClass.setIntervalActivity();
+
+                        try {
+                            console.log(output.response);
+                            const numOfLogsOut = output.response.filter(it => it.statusCode === 403);
+                            const numOfLogsOutError = output.response.filter(it => it.error !== false);
+                            // numForLogsOut += numOfLogsOut.length;
+                            if (numOfLogsOut.length > 0 || (numOfLogsOutError.length && timeToTry < 2)) {
+                                // numForLogsOut = 0;
+                                if (numOfLogsOut.length > 0) {
+                                    all.banks.accounts.poalimAsakimNew.middleOfWork = true;
+                                    all.banks.accounts.poalimAsakimNew.renewLogin().then(() => {
+                                        if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
+                                            let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                            if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
+                                                err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                            }
+                                            writeLog(err);
+                                            poalimAsakimNew.haltAndWaitForReload = true;
+                                            poalimAsakimNew.logOutNew();
+                                            return;
+                                        }
+                                        callWs()
+                                    });
+                                } else {
+                                    callWs()
+                                }
+                            } else {
+                                if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
+                                    let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                    if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
+                                        err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                    }
+                                    writeLog(err);
+                                    poalimAsakimNew.haltAndWaitForReload = true;
+                                    // myEmitterLogs('Sent data Successfully');
+                                    poalimAsakimNew.logOutNew();
+                                    return;
+                                }
+                                output.response.forEach(v => {
+                                    if (v.response && typeof (v.response) === 'string' && (v.response.includes('<html') || v.response === '')) {
+                                        v.response = null;
+                                    }
+                                });
+                                output.response.filter(item => item.error !== false).forEach(v => {
+                                    v.response = null;
+                                });
+                                resolve(output);
+                            }
+                        } catch (e) {
+                            console.log(e);
+                        } finally {
+
                         }
                     })
-            }
-            callWs();
-        });
-    };
-    poalimAsakimNew.sendDueChecksCtrl = function (allDataArrDueChecks) {
-        return new Promise(resolve => {
-            if (poalimAsakimNew.haltAndWaitForReload === true) {
-                return;
-            }
-            const callWs = function () {
-                all.banks.core.services.sendDueChecks(allDataArrDueChecks)
-                    .then(function (arr) {
-                        resolve(true);
-                    })
-                    .fail(function (error, resErr) {
-                        if (error == 'discard') {
-                            callWs()
-                        } else {
-                            resolve(true);
+                }
+                callWs()
+            });
+        }
+
+        function resolveCookies() {
+            return new Promise(resolve => {
+                win.cookies.getAll({}, function (cool) {
+                    cool.forEach(function (v) {
+                        if (!v.domain.includes('bizibox')) {
+                            document.cookie = v.name + "=" + v.value + ";";
                         }
                     })
+                    resolve(true);
+                });
+            });
+        }
+
+        function timeoutSpace() {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    resolve(true);
+                }, 1500);
+            });
+        }
+
+        async function parallel() {
+            async function parallelSlices(idxArr) {
+                console.log(('תחילת ריצת '
+                    +
+                    poalimAsakimNew.numberOfOperationsNilvim
+                    +
+                    ' חשבונות נוספים, אינדקס מספר: '
+                    +
+                    idxArr));
+                const slicePos = (Number(poalimAsakimNew.numberOfOperationsNilvim) * idxArr);
+                const argsCopy = [].concat(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).map((val, ind) => ({
+                    val,
+                    ind
+                })));
+                const result = new Array(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).length);
+                const promises = new Array(Number(poalimAsakimNew.numberOfOperationsNilvim)).fill(Promise.resolve()); //set how many items will run parallel together
+
+                function chainNext(p) {
+                    if (argsCopy.length) {
+                        const arg = argsCopy.shift();
+                        return p.then(() => {
+                            const operationPromise = asyncOperation(arg.val).then(r => {
+                                console.log('סיום ריצת חשבון-----' + arg.ind, r);
+                                result[arg.ind] = r;
+                            });
+                            return chainNext(operationPromise);
+                        });
+                    }
+                    return p;
+                }
+
+                await Promise.all(promises.map(chainNext));
+                console.log(('סיום ריצת '
+                    +
+                    Number(poalimAsakimNew.numberOfOperationsNilvim)
+                    +
+                    ' חשבונות נוספים, אינדקס מספר: '
+                    +
+                    idxArr), result);
+                return result;
             }
-            callWs();
+
+            let resultArray = [];
+            let listNum = 0;
+            for (let idx = 0; idx < listOfArgumentsSlice; idx++) {
+                const result = await parallelSlices(idx);
+                resultArray = resultArray.concat(result);
+                const currentNumAcc = ((idx + 1) * Number(poalimAsakimNew.numberOfOperationsNilvim));
+                const floorNum = Math.floor(currentNumAcc / Number(poalimAsakimNew.numOfAccForRenewLoginNilvim))
+                if (listNum !== floorNum) {
+                    listNum = floorNum;
+                    await all.banks.accounts.poalimAsakimNew.renewLogin();
+                }
+                await timeoutSpace();
+            }
+            return resultArray;
+        }
+
+        parallel().then(async (res) => {
+            const elapsed = Date.now() - started;
+            myEmitterLogs('Finished to collect all loadDeposits of all accounts at ' + (elapsed / 1000) + 'ms');
+            all.banks.accounts.poalimAsakimNew.loadLoanNew();
         });
-    };
-    poalimAsakimNew.sendStandingOrdersCtrl = function (allDataArrDueChecks) {
-        return new Promise(resolve => {
-            if (poalimAsakimNew.haltAndWaitForReload === true) {
-                return;
-            }
-            const callWs = function () {
-                all.banks.core.services.sendStandingOrders(allDataArrDueChecks)
-                    .then(function (arr) {
-                        resolve(true);
-                    })
-                    .fail(function (error, resErr) {
-                        if (error === 'discard') {
-                            callWs()
-                        } else {
-                            resolve(true);
+    }
+    poalimAsakimNew.loadLoanNew = async function () {
+        const started = Date.now();
+        const ARR_TRANS_DAY_TO_RUN = all.banks.accountDetails.bank.arrDDAll.filter((it) => (it.IND_NILVIM > 0)).map((item, idx) => {
+            return Object.assign(item, {
+                idx,
+                bankParams: ("12-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[1] + "-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
+                BankNumber: 12,
+                AccountNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
+                BranchNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[1]),
+            })
+        });
+
+        const listOfArguments = ARR_TRANS_DAY_TO_RUN;
+        const listOfArgumentsSlice = (ARR_TRANS_DAY_TO_RUN.length / Number(poalimAsakimNew.numberOfOperationsNilvim));
+        if (ARR_TRANS_DAY_TO_RUN.length) {
+            myEmitterLogs(21);
+        }
+        const asyncOperation = param => {
+            return new Promise(async resolve => {
+                monitorActivityClass.setIntervalActivity();
+                // await resolveCookies();
+                console.log('step 1------ Running Index account: ' + param.idx);
+                console.log(all.banks.core.services.logAlertsBanks(30, JSON.stringify(all.banks.accountDetails.bank.arrDDAll[param.idx])));
+
+                const text = "מתחיל loadLoan לחשבון" + " " + all.banks.accountDetails.bank.arrDDAll[param.idx].BANK_SNIF_ACCOUNT_KEY;
+                console.log(all.banks.core.services.logAlertsBanks(10, text));
+                let allDataArrLoan = [];
+                try {
+                    var urlXhr = "https://biz2.bankhapoalim.co.il/ServerServices/credit-and-mortgage/businessLoans/loans?accountId=" + param.bankParams + "&creditCurrencyCode=-1&creditSystemSubCategory=0&dataDetailingLevelCode=1&interestTypeCode=-1&linkageMethodCode=-1&unitedCreditTypeCode=-1";
+                    let data = await resolveSender({
+                        urls: [urlXhr],
+                        method: "GET",
+                        body: null,
+                        headers: null,
+                    });
+                    if (data && data.response && data.response.length && data.response[0].response) {
+                        data = data.response[0].response;
+                        if (data && data.loans && data.loans.length) {
+                            for (let indx = 0; indx < data.loans.length; indx++) {
+                                const v = data.loans[indx];
+                                if (v.creditCurrencyCode === 1) {
+                                    var url1 = "https://biz2.bankhapoalim.co.il/ServerServices/credit-and-mortgage/loans/"
+                                        + v.creditSerialNumber + "?accountId=" + param.bankParams
+                                        + "&creditCurrencyCode=" + v.creditCurrencyCode
+                                        + "&creditLimitCode=" + data.creditLimitCode
+                                        + "&detailedAccountTypeCode=" + v.detailedAccountTypeCode
+                                        + "&unitedCreditTypeCode=" + v.unitedCreditTypeCode
+                                        + "&lang=he&type=loan&view=business";
+                                    let res = await resolveSender({
+                                        urls: [url1],
+                                        method: "GET",
+                                        body: null,
+                                        headers: null,
+                                    });
+                                    if (res && res.response && res.response.length && res.response[0].response) {
+                                        res = res.response[0].response;
+                                        allDataArrLoan.push({
+                                            "TargetId": all.banks.accountDetails.bank.targetId,
+                                            "Token": all.banks.accountDetails.bank.token,
+                                            "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
+                                            "ExporterId": all.banks.spiderConfig.spiderId,
+                                            'BankNumber': param.BankNumber,
+                                            'AccountNumber': param.AccountNumber,
+                                            'BranchNumber': param.BranchNumber,
+                                            "LoanName": v.creditTypeDescription,
+                                            "LoanNumber": v.creditSerialNumber,
+                                            "LoanIntrest": res.currentInterestPercent,
+                                            "LoanFinish": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(res.loanEndDate)),
+                                            "LoanTotalLeft": res.amortizationSchedulePrincipalBalance, // res.actualPrincipalBalance,
+                                            "LoanDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(res.valueDate)),
+                                            "PaymentsNumberLeft": res.principalPaymentsNumberBalance,
+                                            "LoanOriginalTotal": v.originalLoanPrincipalAmount,
+                                            "NextPaymentTotal": v.nextPaymentAmount,
+                                            "LoanNextPaymentDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.nextPaymentDate)),
+                                            "LoanPigurTotal": res.messages && res.messages.length && res.messages[0]['messageCode'] && res.messages[0]['messageCode'] === 4894 ? null : res.arrearTotalAmount,
+                                            "LoanType": v.unitedCreditTypeCode, // null,
+                                            "NumOfPayments": res.originalPrincipalPaymentsNumber,
+                                            "NumOfInterestPayments": res.originalInterestPaymentsNumber,
+                                            "LastPaymentTotal": null,
+                                            "GraceNextPaymentDate": null,
+                                            "GraceNextPaymentTotal": null,
+                                            "LoanFirstPaymentDate": null,
+                                            "InterestFirstPaymentDate": null
+                                        });
+                                    }
+                                }
+                            }
+
+                        }
+                    }
+                } catch (err) {
+
+                }
+
+                try {
+                    if (allDataArrLoan.length) {
+                        console.log('Last step ------ found ' + allDataArrLoan.length + ' Loans of Index account: ' + param.idx);
+                        await all.banks.core.services.sendLoanServer(allDataArrLoan);
+                        allDataArrLoan = null;
+                    }
+                    resolve(true);
+                } catch (error) {
+                    resolve(true);
+                }
+            })
+        };
+
+        function resolveSender(item) {
+            return new Promise(resolve => {
+                let timeToTry = 0;
+                const callWs = function () {
+                    timeToTry += 1;
+                    console.log('start callWs')
+                    monitorActivityClass.setIntervalActivity();
+
+                    let params = Object.assign(item, {
+                        cookies: poalimAsakimNew.cookie,
+                        token: poalimAsakimNew.xsrfToken,
+                        numberOfOperations: poalimAsakimNew.numberOfOperationsNilvim
+                    });
+                    // if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
+                    //     params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
+                    // }
+                    parallelReq(params, function (output) {
+                        console.log('got res callWs')
+                        monitorActivityClass.setIntervalActivity();
+
+                        try {
+                            console.log(output.response);
+                            const numOfLogsOut = output.response.filter(it => it.statusCode === 403);
+                            const numOfLogsOutError = output.response.filter(it => it.error !== false);
+                            // numForLogsOut += numOfLogsOut.length;
+                            if (numOfLogsOut.length > 0 || (numOfLogsOutError.length && timeToTry < 2)) {
+                                // numForLogsOut = 0;
+                                if (numOfLogsOut.length > 0) {
+                                    all.banks.accounts.poalimAsakimNew.middleOfWork = true;
+                                    all.banks.accounts.poalimAsakimNew.renewLogin().then(() => {
+                                        if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
+                                            let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                            if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
+                                                err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                            }
+                                            writeLog(err);
+                                            poalimAsakimNew.haltAndWaitForReload = true;
+                                            poalimAsakimNew.logOutNew();
+                                            return;
+                                        }
+                                        callWs()
+                                    });
+                                } else {
+                                    callWs()
+                                }
+                            } else {
+                                if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
+                                    let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                    if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
+                                        err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                    }
+                                    writeLog(err);
+                                    poalimAsakimNew.haltAndWaitForReload = true;
+                                    // myEmitterLogs('Sent data Successfully');
+                                    poalimAsakimNew.logOutNew();
+                                    return;
+                                }
+                                output.response.forEach(v => {
+                                    if (v.response && typeof (v.response) === 'string' && (v.response.includes('<html') || v.response === '')) {
+                                        v.response = null;
+                                    }
+                                });
+                                output.response.filter(item => item.error !== false).forEach(v => {
+                                    v.response = null;
+                                });
+                                resolve(output);
+                            }
+                        } catch (e) {
+                            console.log(e);
+                        } finally {
+
                         }
                     })
+                }
+                callWs()
+            });
+        }
+
+        function resolveCookies() {
+            return new Promise(resolve => {
+                win.cookies.getAll({}, function (cool) {
+                    cool.forEach(function (v) {
+                        if (!v.domain.includes('bizibox')) {
+                            document.cookie = v.name + "=" + v.value + ";";
+                        }
+                    })
+                    resolve(true);
+                });
+            });
+        }
+
+        function timeoutSpace() {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    resolve(true);
+                }, 1500);
+            });
+        }
+
+        async function parallel() {
+            async function parallelSlices(idxArr) {
+                console.log(('תחילת ריצת '
+                    +
+                    poalimAsakimNew.numberOfOperationsNilvim
+                    +
+                    ' חשבונות נוספים, אינדקס מספר: '
+                    +
+                    idxArr));
+                const slicePos = (Number(poalimAsakimNew.numberOfOperationsNilvim) * idxArr);
+                const argsCopy = [].concat(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).map((val, ind) => ({
+                    val,
+                    ind
+                })));
+                const result = new Array(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).length);
+                const promises = new Array(Number(poalimAsakimNew.numberOfOperationsNilvim)).fill(Promise.resolve()); //set how many items will run parallel together
+
+                function chainNext(p) {
+                    if (argsCopy.length) {
+                        const arg = argsCopy.shift();
+                        return p.then(() => {
+                            const operationPromise = asyncOperation(arg.val).then(r => {
+                                console.log('סיום ריצת חשבון-----' + arg.ind, r);
+                                result[arg.ind] = r;
+                            });
+                            return chainNext(operationPromise);
+                        });
+                    }
+                    return p;
+                }
+
+                await Promise.all(promises.map(chainNext));
+                console.log(('סיום ריצת '
+                    +
+                    Number(poalimAsakimNew.numberOfOperationsNilvim)
+                    +
+                    ' חשבונות נוספים, אינדקס מספר: '
+                    +
+                    idxArr), result);
+                return result;
             }
-            callWs();
+
+            let resultArray = [];
+            let listNum = 0;
+            for (let idx = 0; idx < listOfArgumentsSlice; idx++) {
+                const result = await parallelSlices(idx);
+                resultArray = resultArray.concat(result);
+                const currentNumAcc = ((idx + 1) * Number(poalimAsakimNew.numberOfOperationsNilvim));
+                const floorNum = Math.floor(currentNumAcc / Number(poalimAsakimNew.numOfAccForRenewLoginNilvim))
+                if (listNum !== floorNum) {
+                    listNum = floorNum;
+                    await all.banks.accounts.poalimAsakimNew.renewLogin();
+                }
+                await timeoutSpace();
+            }
+            return resultArray;
+        }
+
+        parallel().then(async (res) => {
+            const elapsed = Date.now() - started;
+            myEmitterLogs('Finished to collect all loadLoan of all accounts at ' + (elapsed / 1000) + 'ms');
+            poalimAsakimNew.loadDueChecksNew();
         });
+    }
+    poalimAsakimNew.loadDueChecksNew = async function () {
+        const started = Date.now();
+        const ARR_TRANS_DAY_TO_RUN = all.banks.accountDetails.bank.arrDDAll.filter((it) => (it.IND_NILVIM > 0)).map((item, idx) => {
+            return Object.assign(item, {
+                idx,
+                bankParams: ("12-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[1] + "-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
+                BankNumber: 12,
+                AccountNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
+                BranchNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[1]),
+            })
+        });
+
+        const listOfArguments = ARR_TRANS_DAY_TO_RUN;
+        const listOfArgumentsSlice = (ARR_TRANS_DAY_TO_RUN.length / Number(poalimAsakimNew.numberOfOperationsNilvim));
+        if (ARR_TRANS_DAY_TO_RUN.length) {
+            myEmitterLogs(19);
+        }
+        const asyncOperation = param => {
+            return new Promise(async resolve => {
+                monitorActivityClass.setIntervalActivity();
+                // await resolveCookies();
+                console.log('step 1------ Running Index account: ' + param.idx);
+                console.log(all.banks.core.services.logAlertsBanks(30, JSON.stringify(all.banks.accountDetails.bank.arrDDAll[param.idx])));
+
+                const text = "מתחיל loadDueChecks לחשבון" + " " + all.banks.accountDetails.bank.arrDDAll[param.idx].BANK_SNIF_ACCOUNT_KEY;
+                console.log(all.banks.core.services.logAlertsBanks(10, text));
+
+                let allDataArrDueChecks = [];
+                var dateBasic = new Date(new Date().getFullYear(), new Date().getMonth(), (new Date().getDate() + 1));
+                var dateFrom = dateBasic.getFullYear() + '' + ("0" + (dateBasic.getMonth() + 1)).slice(-2) + ("0" + (dateBasic.getDate())).slice(-2);
+                var dateToFormat = new Date(new Date().getFullYear(), new Date().getMonth() + 36, new Date().getDate());
+                var dateTo = dateToFormat.getFullYear() + '' + ("0" + (dateToFormat.getMonth() + 1)).slice(-2) + ("0" + (dateToFormat.getDate())).slice(-2);
+                const commonPart = {
+                    'TargetId': all.banks.accountDetails.bank.targetId,
+                    'Token': all.banks.accountDetails.bank.token,
+                    'BankNumber': param.BankNumber,
+                    'AccountNumber': param.AccountNumber,
+                    'BranchNumber': param.BranchNumber,
+                    'ExtractDate': new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
+                    'ExporterId': all.banks.spiderConfig.spiderId
+                };
+
+                try {
+                    var urlXhr = "https://biz2.bankhapoalim.co.il/ServerServices/current-account/cheques?accountId=" + param.bankParams + "&endDate=" + dateTo + "&startDate=" + dateFrom + "&type=totals&view=custodyBySettedDate";
+                    let data = await resolveSender({
+                        urls: [urlXhr],
+                        method: "GET",
+                        body: null,
+                        headers: null,
+                    });
+                    if (data && data.response && data.response.length && data.response[0].response) {
+                        data = data.response[0].response;
+                        let chequesPerDateList = data && Array.isArray(data.chequesPerDateList) ? data.chequesPerDateList : [];
+                        for (let idx = 0; idx < chequesPerDateList.length && !poalimAsakimNew.haltAndWaitForReload; idx++) {
+                            const paymentDate = chequesPerDateList[idx].paymentDate;
+                            try {
+                                let result = await resolveSender({
+                                    urls: ["https://biz2.bankhapoalim.co.il/ServerServices/current-account/cheques?accountId=" + param.bankParams
+                                    + "&paymentDate=" + paymentDate
+                                    + "&type=details&view=custody"],
+                                    method: "GET",
+                                    body: null,
+                                    headers: null,
+                                });
+                                if (result && result.response && result.response.length && result.response[0].response) {
+                                    result = result.response[0].response;
+                                    if (result && Array.isArray(result.chequeInCustodyList)) {
+                                        for (let va of result.chequeInCustodyList) {
+                                            allDataArrDueChecks.push(
+                                                Object.assign({
+                                                    "CheckNumber": va.referenceNumber,
+                                                    "CheckDescription": va.eventNumber,
+                                                    "DepositeDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(va.depositDate)),
+                                                    "DueDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(va.paymentDate)),
+                                                    "CheckTotal": va.chequeAmount,
+                                                    "CheckBankNumber": va.payingBankNumber,
+                                                    "CheckAccountNumber": va.payingAccountNumber,
+                                                    "CheckBranchNumber": va.payingBranchNumber
+                                                }, commonPart));
+                                        }
+                                    }
+
+                                }
+                            } catch (e) {
+                                writeLog(e);
+                            }
+                        }
+                    }
+                } catch (exc) {
+                    writeLog(exc);
+                } finally {
+
+                }
+
+                try {
+                    if (allDataArrDueChecks.length) {
+                        console.log('Last step ------ found ' + allDataArrDueChecks.length + ' DueChecks of Index account: ' + param.idx);
+                        await all.banks.core.services.sendDueChecksServer(allDataArrDueChecks);
+                        allDataArrDueChecks = null;
+                    }
+                    resolve(true);
+                } catch (error) {
+                    resolve(true);
+                }
+            })
+        };
+
+        function resolveSender(item) {
+            return new Promise(resolve => {
+                let timeToTry = 0;
+                const callWs = function () {
+                    timeToTry += 1;
+                    console.log('start callWs')
+                    monitorActivityClass.setIntervalActivity();
+
+                    let params = Object.assign(item, {
+                        cookies: poalimAsakimNew.cookie,
+                        token: poalimAsakimNew.xsrfToken,
+                        numberOfOperations: poalimAsakimNew.numberOfOperationsNilvim
+                    });
+                    // if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
+                    //     params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
+                    // }
+                    parallelReq(params, function (output) {
+                        console.log('got res callWs')
+                        monitorActivityClass.setIntervalActivity();
+
+                        try {
+                            console.log(output.response);
+                            const numOfLogsOut = output.response.filter(it => it.statusCode === 403);
+                            const numOfLogsOutError = output.response.filter(it => it.error !== false);
+                            // numForLogsOut += numOfLogsOut.length;
+                            if (numOfLogsOut.length > 0 || (numOfLogsOutError.length && timeToTry < 2)) {
+                                // numForLogsOut = 0;
+                                if (numOfLogsOut.length > 0) {
+                                    all.banks.accounts.poalimAsakimNew.middleOfWork = true;
+                                    all.banks.accounts.poalimAsakimNew.renewLogin().then(() => {
+                                        if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
+                                            let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                            if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
+                                                err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                            }
+                                            writeLog(err);
+                                            poalimAsakimNew.haltAndWaitForReload = true;
+                                            poalimAsakimNew.logOutNew();
+                                            return;
+                                        }
+                                        callWs()
+                                    });
+                                } else {
+                                    callWs()
+                                }
+                            } else {
+                                if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
+                                    let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                    if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
+                                        err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                    }
+                                    writeLog(err);
+                                    poalimAsakimNew.haltAndWaitForReload = true;
+                                    // myEmitterLogs('Sent data Successfully');
+                                    poalimAsakimNew.logOutNew();
+                                    return;
+                                }
+                                output.response.forEach(v => {
+                                    if (v.response && typeof (v.response) === 'string' && (v.response.includes('<html') || v.response === '')) {
+                                        v.response = null;
+                                    }
+                                });
+                                output.response.filter(item => item.error !== false).forEach(v => {
+                                    v.response = null;
+                                });
+                                resolve(output);
+                            }
+                        } catch (e) {
+                            console.log(e);
+                        } finally {
+
+                        }
+                    })
+                }
+                callWs()
+            });
+        }
+
+        function resolveCookies() {
+            return new Promise(resolve => {
+                win.cookies.getAll({}, function (cool) {
+                    cool.forEach(function (v) {
+                        if (!v.domain.includes('bizibox')) {
+                            document.cookie = v.name + "=" + v.value + ";";
+                        }
+                    })
+                    resolve(true);
+                });
+            });
+        }
+
+        function timeoutSpace() {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    resolve(true);
+                }, 1500);
+            });
+        }
+
+        async function parallel() {
+            async function parallelSlices(idxArr) {
+                console.log(('תחילת ריצת '
+                    +
+                    poalimAsakimNew.numberOfOperationsNilvim
+                    +
+                    ' חשבונות נוספים, אינדקס מספר: '
+                    +
+                    idxArr));
+                const slicePos = (Number(poalimAsakimNew.numberOfOperationsNilvim) * idxArr);
+                const argsCopy = [].concat(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).map((val, ind) => ({
+                    val,
+                    ind
+                })));
+                const result = new Array(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).length);
+                const promises = new Array(Number(poalimAsakimNew.numberOfOperationsNilvim)).fill(Promise.resolve()); //set how many items will run parallel together
+
+                function chainNext(p) {
+                    if (argsCopy.length) {
+                        const arg = argsCopy.shift();
+                        return p.then(() => {
+                            const operationPromise = asyncOperation(arg.val).then(r => {
+                                console.log('סיום ריצת חשבון-----' + arg.ind, r);
+                                result[arg.ind] = r;
+                            });
+                            return chainNext(operationPromise);
+                        });
+                    }
+                    return p;
+                }
+
+                await Promise.all(promises.map(chainNext));
+                console.log(('סיום ריצת '
+                    +
+                    Number(poalimAsakimNew.numberOfOperationsNilvim)
+                    +
+                    ' חשבונות נוספים, אינדקס מספר: '
+                    +
+                    idxArr), result);
+                return result;
+            }
+
+            let resultArray = [];
+            let listNum = 0;
+            for (let idx = 0; idx < listOfArgumentsSlice; idx++) {
+                const result = await parallelSlices(idx);
+                resultArray = resultArray.concat(result);
+                const currentNumAcc = ((idx + 1) * Number(poalimAsakimNew.numberOfOperationsNilvim));
+                const floorNum = Math.floor(currentNumAcc / Number(poalimAsakimNew.numOfAccForRenewLoginNilvim))
+                if (listNum !== floorNum) {
+                    listNum = floorNum;
+                    await all.banks.accounts.poalimAsakimNew.renewLogin();
+                }
+                await timeoutSpace();
+            }
+            return resultArray;
+        }
+
+        parallel().then(async (res) => {
+            const elapsed = Date.now() - started;
+            myEmitterLogs('Finished to collect all loadDueChecksNew of all accounts at ' + (elapsed / 1000) + 'ms');
+            poalimAsakimNew.loadStandingOrdersNew();
+        });
+    }
+    poalimAsakimNew.loadStandingOrdersNew = async function () {
+        const started = Date.now();
+        const ARR_TRANS_DAY_TO_RUN = all.banks.accountDetails.bank.arrDDAll.filter((it) => (it.IND_NILVIM > 0)).map((item, idx) => {
+            return Object.assign(item, {
+                idx,
+                bankParams: ("12-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[1] + "-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
+                BankNumber: 12,
+                AccountNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
+                BranchNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[1]),
+            })
+        });
+
+        const listOfArguments = ARR_TRANS_DAY_TO_RUN;
+        const listOfArgumentsSlice = (ARR_TRANS_DAY_TO_RUN.length / Number(poalimAsakimNew.numberOfOperationsNilvim));
+        if (ARR_TRANS_DAY_TO_RUN.length) {
+            myEmitterLogs(24);
+        }
+        const asyncOperation = param => {
+            return new Promise(async resolve => {
+                monitorActivityClass.setIntervalActivity();
+                // await resolveCookies();
+                console.log('step 1------ Running Index account: ' + param.idx);
+                console.log(all.banks.core.services.logAlertsBanks(30, JSON.stringify(all.banks.accountDetails.bank.arrDDAll[param.idx])));
+
+                const text = "מתחיל loadDueChecks לחשבון" + " " + all.banks.accountDetails.bank.arrDDAll[param.idx].BANK_SNIF_ACCOUNT_KEY;
+                console.log(all.banks.core.services.logAlertsBanks(10, text));
+
+
+                let allDataArrStandingOrders = [];
+
+
+                try {
+                    let urlXhr = "https://biz2.bankhapoalim.co.il/ServerServices/current-account/standingOrders?accountId=" + param.bankParams;
+                    let data = await resolveSender({
+                        urls: [urlXhr],
+                        method: "GET",
+                        body: null,
+                        headers: null,
+                    });
+                    if (data && data.response && data.response.length && data.response[0].response) {
+                        data = data.response[0].response;
+                        if (data && (typeof (data) === 'object') && data.length) {
+                            $(data).each(function (indx, va) {
+                                allDataArrStandingOrders.push({
+                                    "TargetId": all.banks.accountDetails.bank.targetId,
+                                    "Token": all.banks.accountDetails.bank.token,
+                                    'BankNumber': param.BankNumber,
+                                    'AccountNumber': param.AccountNumber,
+                                    'BranchNumber': param.BranchNumber,
+                                    "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
+                                    "ExporterId": all.banks.spiderConfig.spiderId,
+                                    "OrderName": va.standingOrderProductDescription,
+                                    "OrderOpeningDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(va.updatingDate)),
+                                    "OrderLastDate": null,
+                                    "OrderTotal": va.standingOrderAmount,
+                                    "OrderNumber": va.accountOrderId,
+                                    "Asmachta": null,
+                                    BankTransferNumber: va.creditedBankNumber,
+                                    BranchTransferNumber: va.transferDestinationReference,
+                                    AccountTransferNumber: va.transferSubDestinationReference,
+                                    NamePayerTransfer: null,
+                                    Type: 2
+                                });
+                            });
+
+                        } else {
+
+                        }
+                    }
+
+                } catch (err) {
+
+                }
+
+
+                try {
+                    var urlXhr = "https://biz2.bankhapoalim.co.il/ServerServices/current-account/debitAuthorizations?accountId=" + param.bankParams;
+                    let res = await resolveSender({
+                        urls: [urlXhr],
+                        method: "GET",
+                        body: null,
+                        headers: null,
+                    });
+                    if (res && res.response && res.response.length && res.response[0].response) {
+                        res = res.response[0].response;
+                        if (res && Array.isArray(res.debitAuthorizations) && res.debitAuthorizations.length) {
+                            $(res.debitAuthorizations).each(function (indx1, va1) {
+                                allDataArrStandingOrders.push({
+                                    "TargetId": all.banks.accountDetails.bank.targetId,
+                                    "Token": all.banks.accountDetails.bank.token,
+                                    "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
+                                    "ExporterId": all.banks.spiderConfig.spiderId,
+                                    'BankNumber': param.BankNumber,
+                                    'AccountNumber': param.AccountNumber,
+                                    'BranchNumber': param.BranchNumber,
+                                    "OrderName": va1.institutionName,
+                                    "OrderOpeningDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(va1.agreementOpeningDate)),
+                                    "OrderLastDate": !va1.debitDate ? null : all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(va1.debitDate)),
+                                    "OrderTotal": va1.debitAmount,
+                                    "OrderNumber": va1.institutionShortSerialId,
+                                    "Asmachta": null,
+                                    BankTransferNumber: null,
+                                    BranchTransferNumber: null,
+                                    AccountTransferNumber: null,
+                                    NamePayerTransfer: null,
+                                    Type: 1,
+                                });
+                            });
+                        } else {
+
+
+                        }
+                    }
+
+                } catch (err) {
+
+                }
+
+                try {
+                    if (allDataArrStandingOrders.length) {
+                        console.log('Last step ------ found ' + allDataArrStandingOrders.length + ' StandingOrders of Index account: ' + param.idx);
+                        await all.banks.core.services.sendStandingOrdersServer(allDataArrStandingOrders);
+                        allDataArrStandingOrders = null;
+                    }
+                    resolve(true);
+                } catch (error) {
+                    resolve(true);
+                }
+            })
+        };
+
+        function resolveSender(item) {
+            return new Promise(resolve => {
+                let timeToTry = 0;
+                const callWs = function () {
+                    timeToTry += 1;
+                    console.log('start callWs')
+                    monitorActivityClass.setIntervalActivity();
+                    let params = Object.assign(item, {
+                        cookies: poalimAsakimNew.cookie,
+                        token: poalimAsakimNew.xsrfToken,
+                        numberOfOperations: poalimAsakimNew.numberOfOperationsNilvim
+                    });
+                    // if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
+                    //     params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
+                    // }
+                    parallelReq(params, function (output) {
+                        console.log('got res callWs')
+                        monitorActivityClass.setIntervalActivity();
+
+                        try {
+                            console.log(output.response);
+                            const numOfLogsOut = output.response.filter(it => it.statusCode === 403);
+                            const numOfLogsOutError = output.response.filter(it => it.error !== false);
+                            // numForLogsOut += numOfLogsOut.length;
+                            if (numOfLogsOut.length > 0 || (numOfLogsOutError.length && timeToTry < 2)) {
+                                // numForLogsOut = 0;
+                                if (numOfLogsOut.length > 0) {
+                                    all.banks.accounts.poalimAsakimNew.middleOfWork = true;
+                                    all.banks.accounts.poalimAsakimNew.renewLogin().then(() => {
+                                        if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
+                                            let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                            if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
+                                                err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                            }
+                                            writeLog(err);
+                                            poalimAsakimNew.haltAndWaitForReload = true;
+                                            poalimAsakimNew.logOutNew();
+                                            return;
+                                        }
+                                        callWs()
+                                    });
+                                } else {
+                                    callWs()
+                                }
+                            } else {
+                                if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
+                                    let err = ("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
+                                    if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
+                                        err = ("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
+                                    }
+                                    writeLog(err);
+                                    poalimAsakimNew.haltAndWaitForReload = true;
+                                    // myEmitterLogs('Sent data Successfully');
+                                    poalimAsakimNew.logOutNew();
+                                    return;
+                                }
+                                output.response.forEach(v => {
+                                    if (v.response && typeof (v.response) === 'string' && (v.response.includes('<html') || v.response === '')) {
+                                        v.response = null;
+                                    }
+                                });
+                                output.response.filter(item => item.error !== false).forEach(v => {
+                                    v.response = null;
+                                });
+                                resolve(output);
+                            }
+                        } catch (e) {
+                            console.log(e);
+                        } finally {
+
+                        }
+                    })
+                }
+                callWs()
+            });
+        }
+
+        function resolveCookies() {
+            return new Promise(resolve => {
+                win.cookies.getAll({}, function (cool) {
+                    cool.forEach(function (v) {
+                        if (!v.domain.includes('bizibox')) {
+                            document.cookie = v.name + "=" + v.value + ";";
+                        }
+                    })
+                    resolve(true);
+                });
+            });
+        }
+
+        function timeoutSpace() {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    resolve(true);
+                }, 1500);
+            });
+        }
+
+        async function parallel() {
+            async function parallelSlices(idxArr) {
+                console.log(('תחילת ריצת '
+                    +
+                    poalimAsakimNew.numberOfOperationsNilvim
+                    +
+                    ' חשבונות נוספים, אינדקס מספר: '
+                    +
+                    idxArr));
+                const slicePos = (Number(poalimAsakimNew.numberOfOperationsNilvim) * idxArr);
+                const argsCopy = [].concat(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).map((val, ind) => ({
+                    val,
+                    ind
+                })));
+                const result = new Array(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).length);
+                const promises = new Array(Number(poalimAsakimNew.numberOfOperationsNilvim)).fill(Promise.resolve()); //set how many items will run parallel together
+
+                function chainNext(p) {
+                    if (argsCopy.length) {
+                        const arg = argsCopy.shift();
+                        return p.then(() => {
+                            const operationPromise = asyncOperation(arg.val).then(r => {
+                                console.log('סיום ריצת חשבון-----' + arg.ind, r);
+                                result[arg.ind] = r;
+                            });
+                            return chainNext(operationPromise);
+                        });
+                    }
+                    return p;
+                }
+
+                await Promise.all(promises.map(chainNext));
+                console.log(('סיום ריצת '
+                    +
+                    Number(poalimAsakimNew.numberOfOperationsNilvim)
+                    +
+                    ' חשבונות נוספים, אינדקס מספר: '
+                    +
+                    idxArr), result);
+                return result;
+            }
+
+            let resultArray = [];
+            let listNum = 0;
+            for (let idx = 0; idx < listOfArgumentsSlice; idx++) {
+                const result = await parallelSlices(idx);
+                resultArray = resultArray.concat(result);
+                const currentNumAcc = ((idx + 1) * Number(poalimAsakimNew.numberOfOperationsNilvim));
+                const floorNum = Math.floor(currentNumAcc / Number(poalimAsakimNew.numOfAccForRenewLoginNilvim))
+                if (listNum !== floorNum) {
+                    listNum = floorNum;
+                    await all.banks.accounts.poalimAsakimNew.renewLogin();
+                }
+                await timeoutSpace();
+            }
+            return resultArray;
+        }
+
+        parallel().then(async (res) => {
+            const elapsed = Date.now() - started;
+            myEmitterLogs('Finished to collect all loadStandingOrdersNew of all accounts at ' + (elapsed / 1000) + 'ms');
+            poalimAsakimNew.logOutNew();
+        });
+    }
+    poalimAsakimNew.loadMatahNew = async function () {
+        all.banks.generalVariables.allDataArr = {
+            "ExporterId": all.banks.spiderConfig.spiderId,
+            "BankData": [{
+                "TargetId": all.banks.spiderConfig.spiderId,
+                "Token": all.banks.generalVariables.branchNumber,
+                "BankNumber": 12,
+                "ExtractDate": all.banks.accountDetails.bank.ExtractDate,
+                "Account": []
+            }]
+        };
+        var accDetalis = all.banks.accounts.poalimAsakimNew.vddVal.BANK_SNIF_ACCOUNT_KEY;
+        var arrAcc = accDetalis.split('-');
+
+        try {
+            var urlXhr = "https://biz2.bankhapoalim.co.il/ServerServices/foreign-currency/transactions?accountId=12-" + arrAcc[1] + '-' + arrAcc[0]
+                + "&type=business&lang=he";
+            const data = await all.banks.core.services.httpReq(urlXhr, 'GET', null, false, false);
+//                            .then(poalimAsakimNew.failIfRedirectedToError);
+
+            if (data && data.messageCode == undefined && data.balancesAndLimitsDataList !== undefined && data.balancesAndLimitsDataList.length && data.currencyCode && data.currencyCode.values && data.currencyCode.values.length) {
+                const currencyCodeList = data.currencyCode.values.map(it => it.currencyCode).join(',');
+                const detailedAccountTypeCodeList = data.detailedAccountTypeCode.values.map(it => it.detailedAccountTypeCode).join(',');
+
+                var urls = "https://biz2.bankhapoalim.co.il/ServerServices/foreign-currency/transactions?accountId=12-" + arrAcc[1] + '-' + arrAcc[0]
+                    + "&currencyCodeList=" + currencyCodeList + "&detailedAccountTypeCodeList=" + detailedAccountTypeCodeList
+                    + "&retrievalEndDate=" + all.banks.accounts.poalimAsakimNew.vddVal.datebacksleshToMatah
+                    + "&retrievalStartDate=" + all.banks.accounts.poalimAsakimNew.vddVal.datebacksleshMatah
+                    + "&view=details&type=business&lang=he";
+                try {
+                    const res = await all.banks.core.services.httpReq(urls, 'GET', null, false, false);
+//                                        .then(poalimAsakimNew.failIfRedirectedToError);
+
+                    if (res && res.balancesAndLimitsDataList) {
+                        for (let indx = 0; indx < res.balancesAndLimitsDataList.length; indx++) {
+                            let va = res.balancesAndLimitsDataList[indx];
+                            let currentBalance = data.balancesAndLimitsDataList.find(accIt => accIt.currencyCode === va.currencyCode);
+                            if (currentBalance) {
+                                currentBalance = currentBalance.currentBalance
+                            } else {
+                                currentBalance = 0;
+                            }
+                            all.banks.generalVariables.allDataArr.BankData[0].Account.push({
+                                'BankNumber': 12,
+                                "BranchNumber": parseInt(arrAcc[1]),
+                                "AccountNumber": parseInt(arrAcc[0]),
+                                'Balance': currentBalance,
+                                'AccountCredit': null,
+                                "BankAccountTypeId": va.detailedAccountTypeCode,
+                                "CurrencyId": all.banks.core.services.getTypeCurrencyAll(va.currencySwiftCode, true),
+                                "DataRow": []
+                            });
+                            if (!va.transactions || !va.transactions.length) {
+                                continue;
+                            }
+
+                            for (let trIdx = 0; trIdx < va.transactions.length; trIdx++) {
+                                await processTransaction(va.transactions[trIdx]);
+                            }
+                        }
+                    }
+
+                } catch (e) {
+                    writeLog('Foreign transactions processing failed for ' + arrAcc[1] + '-' + arrAcc[0]
+                        + '(' + acc.currencyCode + ', ' + acc.detailedAccountTypeCode + '): ' + e);
+                }
+
+
+                async function processTransaction(v1) {
+                    const row = {
+                        "Asmachta": poalimAsakimNew.retrieveAsmachta(v1), // v1.referenceNumber,
+                        "TransDesc": v1.activityDescription + (v1.comment ? (' ' + v1.comment) : ''),
+                        "ValueDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v1.executingDate)),
+                        "TransactionType": (v1.eventActivityTypeCode === 1) ? "1" : "0",
+                        "TransTotal": v1.eventAmount,
+                        "Balance": v1.currentBalance,
+                        "IsDaily": (v1.transactionType === "TODAY") ? "1" : "0",
+                        "imgs": null,
+                        "DepositeTransferData": null
+                    };
+                    acc["DataRow"].push(row);
+
+                    if (v1.eventDetails) {
+                        if (v1.originalSystemId === 390) {
+                            // TEMPORARILY disable such requests as they guaranteed to fail
+                            return;
+
+                            try {
+                                const resp = await all.banks.core.services.httpReq(
+                                    "https://biz2.bankhapoalim.co.il/ServerServices/capital-market/securities/" + v1.eventDetails
+                                    + "?accountId=12-" + arrAcc[1] + '-' + arrAcc[0] + "&view=quote&lang=he",
+                                    'GET', null, false, false);
+                                if (resp && resp.securityQuoteData) {
+                                    row["TransDesc"] = row["TransDesc"] + " " + resp.securityQuoteData.securityName;
+                                }
+                            } catch (e) {
+                                writeLog(`Transaction ${v1.referenceNumber} details load failed`);
+                            }
+
+                        } else {
+                            row["TransDesc"] = row["TransDesc"] + " " + v1.eventDetails;
+                        }
+                    }
+                }
+            }
+
+            all.banks.accounts.poalimAsakimNew.sendMatahCtrl();
+
+        } catch (exc) {
+            // myEmitterLogs(exc);
+            writeLog('Foreign transactions processing failed for ' + arrAcc[1] + '-' + arrAcc[0] + exc);
+        }
+
+    }
+    poalimAsakimNew.reverseComment = function (comment) {
+        if (comment == undefined) {
+            return "";
+        }
+        var textCom = comment.split(" ");
+        var text = [];
+        textCom.forEach(function (val) {
+            if (val.match(/\D/g) !== null && val.match(/[\u0590-\u05FF]/g) !== null) {
+                text.unshift(val.split("").reverse().join(""));
+            } else {
+                text.push(val);
+            }
+        });
+        return text.join(" ");
     };
-    poalimAsakimNew.sendMatahCtrl = function () {
-//                if(poalimAsakimNew.indPoalim122 && !poalimAsakimNew.newAcc) {
-//                    Object.assign(all.banks.generalVariables.allDataArr, {"OtpOld": true});
-//                }
-        all.banks.core.services.sendOsh(all.banks.generalVariables.allDataArr, true)
-            .then(function (arr) {
-                all.banks.accounts.poalimAsakimNew.accNum = all.banks.accounts.poalimAsakimNew.accNum + 1;
-                all.banks.accounts.poalimAsakimNew.loadOsh();
+    poalimAsakimNew.logOutNew = async function () {
+        setTimeout(async () => {
+            await poalimAsakimNew.generalReq({
+                uri: 'https://biz2.bankhapoalim.co.il/ng-portals/logoff',
+                family: 4,
+                timeout: 10000,
+                method: "GET"
+            });
+            await poalimAsakimNew.generalReq({
+                uri: 'https://www.bankhapoalim.co.il/exit.html',
+                family: 4,
+                timeout: 10000,
+                method: "GET"
+            });
+            setTimeout(() => {
+                monitorVpn.killVpn(() => {
+                    myEmitterLogs(4);
+                });
+            }, 2000)
+        }, 2500)
+
+
+//		all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/biz-portalserver/logoff?portalName=biz", 'GET', null, false, false)
+//		.then(function (res) {
+//			$('#filecontainerlogin').attr('src', '');
+//			myEmitterLogs(4);
+//		})
+//		.fail(function (error, resErr, urlParam) {
+//			$('#filecontainerlogin').attr('src', '');
+//			myEmitterLogs(4);
+//		});
+    };
+
+    poalimAsakimNew.setNewTime = function (cb) {
+        all.banks.core.services.removingCookie(false, function () {
+            loadAuto();
+        });
+
+        function loadAuto() {
+            if (poalimAsakimNew.indPoalim122) {
+                $('#filecontainerlogin').attr('src', 'https://' + poalimAsakimNew.newAccPath + '.bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=getLogonPageIski');
+                poalimAsakimNew.loginOTP(poalimAsakimNew.passOtpNew, function () {
+                    $('#filecontainerlogin').attr('src', '');
+                    var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=init&reqName=action&language=HE&transactionId=HomePagePoalim&subMenuName=Shekel&ts=189987&tf=" + Math.random() + "&u=i&pSubMenu=undefined&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=187384088979815406&wScr=1920&hScr=1080&tcfo=" + new Date().getTime() + "&mmx=1&qwrt=189987&dtcdb=0&menuTranName=HomePagePoalim"
+                    all.banks.core.services.httpReq(url, 'GET', null, false, false)
+                        .then(function (data, state, status) {
+                            var $$ = all.banks.core.services.parseHtml(data);
+                            data = null;
+                            var ts = $$.find('input[name="ts"]').val();
+                            var u = $$.find('input[name="u"]').val();
+                            var dwx = $$.find('input[name="dwx"]').val();
+                            var tcfo = $$.find('input[name="tcfo"]').val();
+                            var qwrt = $$.find('input[name="qwrt"]').val();
+                            var tsfo = $$.find('input[name="tsfo"]').val();
+                            var mmx = $$.find('input[name="mmx"]').val();
+                            var dwxReq = $$.find('input[name="dwxReq"]').val();
+                            var dwxOp = $$.find('input[name="dwxOp"]').val();
+                            var allAcountsList = $$.find('#allAcountsList');
+                            var reqName = $$.find('input[name="reqName"]').val();
+                            var transactionId = $$.find('input[name="transactionId"]').val();
+                            var menuParam = $$.find('input[name="menuParam"]').val();
+                            var PGcode = $$.find('input[name="PGcode"]').val();
+                            var step = $$.find('input[name="step"]').val();
+                            var fromSubMenu = $$.find('input[name="fromSubMenu"]').val();
+                            var mpux = $$.find('input[name="mpux"]').val();
+                            var targetView = $$.find('input[name="targetView"]').val();
+                            var doc_key = $$.find('input[name="doc_key"]').val();
+                            var callerTid = $$.find('input[name="callerTid"]').val();
+                            var WTcomeFrom = $$.find('input[name="WTcomeFrom"]').val();
+                            var no_Bank = $$.find('input[name="no_Bank"]').val();
+                            var no_Snif = $$.find('input[name="no_Snif"]').val();
+                            var no_Acc = $$.find('input[name="no_Acc"]').val();
+                            var shelav = $$.find('input[name="shelav"]').val();
+                            var goBack = $$.find('input[name="goBack"]').val();
+                            var lastThreeMonthActions = $$.find('input[name="lastThreeMonthActions"]').val();
+                            var dateRangeSelect = $$.find('input[name="dateRangeSelect"]').val();
+                            poalimAsakimNew.varGlobal = {
+                                ts: ts,
+                                u: u,
+                                dwx: dwx,
+                                tcfo: tcfo,
+                                qwrt: qwrt,
+                                tsfo: tsfo,
+                                mmx: mmx,
+                                reqName: reqName,
+                                transactionId: transactionId,
+                                menuParam: menuParam,
+                                PGcode: PGcode,
+                                step: step,
+                                fromSubMenu: fromSubMenu,
+                                mpux: mpux,
+                                targetView: targetView,
+                                dwxReq: dwxReq,
+                                dwxOp: dwxOp,
+                                doc_key: doc_key,
+                                callerTid: callerTid,
+                                WTcomeFrom: WTcomeFrom,
+                                no_Bank: no_Bank,
+                                no_Snif: no_Snif,
+                                no_Acc: no_Acc,
+                                shelav: shelav,
+                                goBack: goBack,
+                                lastThreeMonthActions: lastThreeMonthActions,
+                                dateRangeSelect: dateRangeSelect,
+                                currentAcc: parseFloat(allAcountsList.val())
+                            };
+                            var expires = status.getResponseHeader("X-FRAME-OPTIONS");
+                            if (expires == null) {
+                                $$ = null;
+                                poalimAsakimNew.logOut();
+                            } else {
+                                var req = {
+                                    'input_fromAgg': "",
+                                    'reqName': "action",
+                                    'transactionId': "PerutPikdonotAndPeri",
+                                    'menuParam': "",
+                                    'PGcode': "",
+                                    'step': "1",
+                                    'u': poalimAsakimNew.varGlobal.u,
+                                    'tcfo': poalimAsakimNew.varGlobal.tcfo,
+                                    'tsfo': poalimAsakimNew.varGlobal.tsfo,
+                                    'mmx': poalimAsakimNew.varGlobal.mmx,
+                                    'fromSubMenu': "Investments",
+                                    'qwrt': poalimAsakimNew.varGlobal.qwrt,
+                                    'mpux': "",
+                                    'targetView': "",
+                                    'dwx': poalimAsakimNew.varGlobal.dwx,
+                                    'dwxReq': poalimAsakimNew.varGlobal.dwxReq,
+                                    'dwxOp': poalimAsakimNew.varGlobal.dwxOp,
+                                    'doc_key': "",
+                                    'callerTid': "",
+                                    'WTcomeFrom': "",
+                                    'accountIndex': all.banks.accounts.poalimAsakimNew.indDDAll(all.banks.accounts.poalimAsakimNew.vddVal.BANK_SNIF_ACCOUNT_KEY)
+                                };
+                                all.banks.core.services.httpReq("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc", 'POST', req, true, false)
+                                    .then(function (res) {
+                                        cb();
+                                    })
+                            }
+                        });
+                });
+            } else {
+                $('#filecontainerlogin').attr('src', 'https://' + poalimAsakimNew.newAccPath + '.bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=getLogonIski');
+
+                var ifarmeSetInterval = setInterval(function () {
+                    monitorActivityClass.setIntervalActivity();
+                    var input = window.frames[0].callCheckIsMnkReady;
+                    if (input == undefined) {
+                        myEmitterLogs(2);
+                        $('#filecontainerlogin').attr('src', 'https://' + poalimAsakimNew.newAccPath + '.bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=getLogonIski');
+                    } else {
+                        clearInterval(ifarmeSetInterval);
+                    }
+                }, 4000);
+
+                var waitForIFrame = setInterval(function () {
+                    var input = window.frames[0].callCheckIsMnkReady;
+                    if (input !== undefined) {
+                        myEmitterLogs(3);
+                        clearInterval(waitForIFrame);
+                        doneLoadFrame();
+                    }
+                }, 200);
+
+                function doneLoadFrame() {
+                    try {
+                        var form = {
+                            "password": "",
+                            "language": "HE",
+                            "comeFromBank": "",
+                            "sugUser": "Iski",
+                            "reqName": "performLogon",
+                            "key": window.frames[0].document.logon.key.value,
+                            "bank": "",
+                            "kgmCodeMenahel": "",
+                            "PK": "",
+                            "w": "1024",
+                            "h": "768",
+                            "v": "",
+                            "nls": "HE",
+                            "pkiMessage": "",
+                            "osVersion": "",
+                            "browserVersion": "",
+                            "activeXVersion": "",
+                            "driverVersion": "",
+                            "MiniKeyVersion": "",
+                            "InstituteCode": window.frames[0].document.logon.InstituteCode.value,
+                            "nsv": "y",
+                            "signed": "",
+                            "userid": "",
+                            "sn": "",
+                            "changePswCheck": "",
+                            "saFlash": "false",
+                            "__password": "",
+                        }
+
+                        $('#filecontainerlogin').contents().find("input[name='password']").val(all.banks.accountDetails.bank.password);
+                        var pwdFld = document.createElement("input");
+                        pwdFld.type = "password";
+                        pwdFld.value = all.banks.accountDetails.bank.password;
+                        pwdFld.name = "password";
+
+                        window.frames[0].callCheckIsMnkReady(function (result) {
+                            if (result == "0") {
+                                setTimeout(setMnkLoginSerialNo, 0, 1, pwdFld);
+                            }
+                        });
+
+                        function setMnkLoginSerialNo(fromWhere, pwdFld) {
+                            window.frames[0].callGetSerialToken(function (result) {
+                                form.sn = result;
+                                setTimeout(setMnkLoginSignData, 0, 1, pwdFld);
+                            });
+                        }
+
+                        function setMnkLoginSignData(fromWhere, pwdFld) {
+                            window.frames[0].signMnkToken($('#filecontainerlogin').contents().find("SCRIPT").text().split('signMnkToken("')[1].split('",')[0], pwdFld.value, function (result) {
+                                sArray = result.split(" ");
+                                rc = sArray[0];
+                                if (rc == "0") {
+                                    form.userid = sArray[1];
+                                    form.signed = sArray[2];
+                                    pwdFld.value = "";
+                                }
+                                window.frames[0].vsenc.EncryptForm(window.frames[0].document.logon);
+                                form.password = window.frames[0].document.logon.password.value;
+
+                                all.banks.core.services.httpReq("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc", 'POST', form, true, false)
+                                    .then(function (data, state, status) {
+                                        //	myEmitterLogs(5);
+
+                                        all.banks.core.services.httpReq("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?&reqName=checkMinikeyTimeout", 'GET', null, false, false)
+                                            .then(function (data, state, status) {
+                                                all.banks.core.services.httpReq("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=init&reqName=action&language=HE&transactionId=HomePagePoalim&subMenuName=Shekel&ts=821985&tf=0.9139892475098654&u=i&pSubMenu=undefined&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=872203481444646764&wScr=1024&hScr=768&tcfo=1500516022663&mmx=1&qwrt=821985&dtcdb=99999999&menuTranName=HomePagePoalim", 'GET', null, false, false)
+                                                    .then(function (data, state, status) {
+                                                        $('#filecontainerlogin').attr('src', '');
+                                                        var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=init&reqName=action&language=HE&transactionId=HomePagePoalim&subMenuName=Shekel&ts=189987&tf=" + Math.random() + "&u=i&pSubMenu=undefined&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=187384088979815406&wScr=1920&hScr=1080&tcfo=" + new Date().getTime() + "&mmx=1&qwrt=189987&dtcdb=0&menuTranName=HomePagePoalim"
+                                                        all.banks.core.services.httpReq(url, 'GET', null, false, false)
+                                                            .then(function (data, state, status) {
+                                                                var $$ = all.banks.core.services.parseHtml(data);
+                                                                data = null;
+                                                                var ts = $$.find('input[name="ts"]').val();
+                                                                var u = $$.find('input[name="u"]').val();
+                                                                var dwx = $$.find('input[name="dwx"]').val();
+                                                                var tcfo = $$.find('input[name="tcfo"]').val();
+                                                                var qwrt = $$.find('input[name="qwrt"]').val();
+                                                                var tsfo = $$.find('input[name="tsfo"]').val();
+                                                                var mmx = $$.find('input[name="mmx"]').val();
+                                                                var dwxReq = $$.find('input[name="dwxReq"]').val();
+                                                                var dwxOp = $$.find('input[name="dwxOp"]').val();
+                                                                var allAcountsList = $$.find('#allAcountsList');
+                                                                var reqName = $$.find('input[name="reqName"]').val();
+                                                                var transactionId = $$.find('input[name="transactionId"]').val();
+                                                                var menuParam = $$.find('input[name="menuParam"]').val();
+                                                                var PGcode = $$.find('input[name="PGcode"]').val();
+                                                                var step = $$.find('input[name="step"]').val();
+                                                                var fromSubMenu = $$.find('input[name="fromSubMenu"]').val();
+                                                                var mpux = $$.find('input[name="mpux"]').val();
+                                                                var targetView = $$.find('input[name="targetView"]').val();
+                                                                var doc_key = $$.find('input[name="doc_key"]').val();
+                                                                var callerTid = $$.find('input[name="callerTid"]').val();
+                                                                var WTcomeFrom = $$.find('input[name="WTcomeFrom"]').val();
+                                                                var no_Bank = $$.find('input[name="no_Bank"]').val();
+                                                                var no_Snif = $$.find('input[name="no_Snif"]').val();
+                                                                var no_Acc = $$.find('input[name="no_Acc"]').val();
+                                                                var shelav = $$.find('input[name="shelav"]').val();
+                                                                var goBack = $$.find('input[name="goBack"]').val();
+                                                                var lastThreeMonthActions = $$.find('input[name="lastThreeMonthActions"]').val();
+                                                                var dateRangeSelect = $$.find('input[name="dateRangeSelect"]').val();
+                                                                poalimAsakimNew.varGlobal = {
+                                                                    ts: ts,
+                                                                    u: u,
+                                                                    dwx: dwx,
+                                                                    tcfo: tcfo,
+                                                                    qwrt: qwrt,
+                                                                    tsfo: tsfo,
+                                                                    mmx: mmx,
+                                                                    reqName: reqName,
+                                                                    transactionId: transactionId,
+                                                                    menuParam: menuParam,
+                                                                    PGcode: PGcode,
+                                                                    step: step,
+                                                                    fromSubMenu: fromSubMenu,
+                                                                    mpux: mpux,
+                                                                    targetView: targetView,
+                                                                    dwxReq: dwxReq,
+                                                                    dwxOp: dwxOp,
+                                                                    doc_key: doc_key,
+                                                                    callerTid: callerTid,
+                                                                    WTcomeFrom: WTcomeFrom,
+                                                                    no_Bank: no_Bank,
+                                                                    no_Snif: no_Snif,
+                                                                    no_Acc: no_Acc,
+                                                                    shelav: shelav,
+                                                                    goBack: goBack,
+                                                                    lastThreeMonthActions: lastThreeMonthActions,
+                                                                    dateRangeSelect: dateRangeSelect,
+                                                                    currentAcc: parseFloat(allAcountsList.val())
+                                                                };
+                                                                var expires = status.getResponseHeader("X-FRAME-OPTIONS");
+                                                                if (expires == null) {
+                                                                    $$ = null;
+                                                                    poalimAsakimNew.logOut();
+                                                                } else {
+                                                                    var req = {
+                                                                        'input_fromAgg': "",
+                                                                        'reqName': "action",
+                                                                        'transactionId': "PerutPikdonotAndPeri",
+                                                                        'menuParam': "",
+                                                                        'PGcode': "",
+                                                                        'step': "1",
+                                                                        'u': poalimAsakimNew.varGlobal.u,
+                                                                        'tcfo': poalimAsakimNew.varGlobal.tcfo,
+                                                                        'tsfo': poalimAsakimNew.varGlobal.tsfo,
+                                                                        'mmx': poalimAsakimNew.varGlobal.mmx,
+                                                                        'fromSubMenu': "Investments",
+                                                                        'qwrt': poalimAsakimNew.varGlobal.qwrt,
+                                                                        'mpux': "",
+                                                                        'targetView': "",
+                                                                        'dwx': poalimAsakimNew.varGlobal.dwx,
+                                                                        'dwxReq': poalimAsakimNew.varGlobal.dwxReq,
+                                                                        'dwxOp': poalimAsakimNew.varGlobal.dwxOp,
+                                                                        'doc_key': "",
+                                                                        'callerTid': "",
+                                                                        'WTcomeFrom': "",
+                                                                        'accountIndex': all.banks.accounts.poalimAsakimNew.indDDAll(all.banks.accounts.poalimAsakimNew.vddVal.BANK_SNIF_ACCOUNT_KEY)
+                                                                    };
+                                                                    all.banks.core.services.httpReq("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc", 'POST', req, true, false)
+                                                                        .then(function (res) {
+                                                                            cb();
+                                                                        })
+                                                                }
+                                                            });
+                                                    })
+                                            })
+                                    })
+
+                            })
+                        }
+                    } catch (err) {
+                        all.banks.core.services.errorLog(err);
+                    }
+                }
+            }
+        }
+    }
+    poalimAsakimNew.loadAccDD = function () {
+        var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=init&reqName=action&language=HE&transactionId=HomePagePoalim&subMenuName=Shekel&ts=189987&tf=" + Math.random() + "&u=i&pSubMenu=undefined&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=187384088979815406&wScr=1920&hScr=1080&tcfo=" + new Date().getTime() + "&mmx=1&qwrt=189987&dtcdb=0&menuTranName=HomePagePoalim"
+        all.banks.core.services.httpReq(url, 'GET', null, false, false)
+            .then(function (data, state, status) {
+                var $$ = all.banks.core.services.parseHtml(data);
+                data = null;
+                var ts = $$.find('input[name="ts"]').val();
+                var u = $$.find('input[name="u"]').val();
+                var dwx = $$.find('input[name="dwx"]').val();
+                var tcfo = $$.find('input[name="tcfo"]').val();
+                var qwrt = $$.find('input[name="qwrt"]').val();
+                var tsfo = $$.find('input[name="tsfo"]').val();
+                var mmx = $$.find('input[name="mmx"]').val();
+                var dwxReq = $$.find('input[name="dwxReq"]').val();
+                var dwxOp = $$.find('input[name="dwxOp"]').val();
+                var allAcountsList = $$.find('#allAcountsList');
+                poalimAsakimNew.varGlobal = {
+                    ts: ts,
+                    u: u,
+                    dwx: dwx,
+                    tcfo: tcfo,
+                    qwrt: qwrt,
+                    tsfo: tsfo,
+                    mmx: mmx,
+                    dwxReq: dwxReq,
+                    dwxOp: dwxOp,
+                    currentAcc: parseFloat(allAcountsList.val())
+                };
+                var expires = status.getResponseHeader("X-FRAME-OPTIONS");
+                if (expires == null) {
+                    $$ = null;
+                    poalimAsakimNew.setNewTime(poalimAsakimNew.loadAccDD);
+                    //all.banks.accounts.poalimAsakimNew.logOut();
+                } else {
+                    try {
+                        if ($$.find('form[name="logon"]').length > 0) {
+                            $$ = null;
+                            myEmitterLogs(9);
+                        } else {
+                            $$ = null;
+                            if (allAcountsList.length > 0) {
+                                var arrDD = '', arraDD = [], arrForManual = [],
+                                    len = allAcountsList.find('option').length;
+                                allAcountsList.find('option script').each(function (i, v) {
+                                    var text = $(v).text().split('new Acc(')[1].split(")")[0].split(",");
+                                    var snifNum = text[1].replace(/\D/g, "");
+                                    var accNum = text[2].replace(/\D/g, "");
+                                    if (i + 1 == len) {
+                                        arrDD += accNum + '-' + snifNum;
+                                    } else {
+                                        arrDD += accNum + '-' + snifNum + ',';
+                                    }
+                                    arraDD.push(accNum + '-' + snifNum);
+                                    if (all.banks.bankPoalimAsakimManual) {
+                                        if (all.banks.accountDetails.bank.arrDDAll[0].BANK_SNIF_ACCOUNT_KEY == null) {
+                                            arrForManual.push({
+                                                "BANK_SNIF_ACCOUNT_KEY": accNum + '-' + snifNum,
+                                                "BITWISE": all.banks.accountDetails.bank.arrDDAll[0].BITWISE,
+                                                "TRANS_DAY_TO_RUN": Math.min(all.banks.accountDetails.bank.arrDDAll[0].TRANS_DAY_TO_RUN,
+                                                    poalimAsakimNew.TRANS_DAY_TO_RUN_MAX_FOR_OLD_SITE),
+                                                "CHECKPIC_DAYS_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].CHECKPIC_DAYS_TO_RUN,
+                                                "IND_CCARD_DATA": all.banks.accountDetails.bank.arrDDAll[0].IND_CCARD_DATA,
+                                                "IND_NILVIM": all.banks.accountDetails.bank.arrDDAll[0].IND_NILVIM,
+                                                "MATAH_DAY_TO_RUN": all.banks.accountDetails.bank.arrDDAll[0].MATAH_DAY_TO_RUN,
+                                                "DATE_TILL": all.banks.accountDetails.bank.arrDDAll[0].DATE_TILL,
+                                                "datebackslesh": all.banks.accountDetails.bank.arrDDAll[0].datebackslesh,
+                                                "datebacksleshTo": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshTo,
+                                                "datebacksleshMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshMatah,
+                                                "datebacksleshToMatah": all.banks.accountDetails.bank.arrDDAll[0].datebacksleshToMatah
+                                            })
+                                        }
+                                    }
+                                    if (i + 1 == len) {
+                                        let isSet = true;
+                                        if (all.banks.bankPoalimAsakimManual) {
+                                            if (all.banks.accountDetails.bank.arrDDAll[0].BANK_SNIF_ACCOUNT_KEY == null) {
+                                                isSet = false;
+                                                all.banks.accountDetails.bank.arrDDAll = arrForManual;
+                                            }
+                                        }
+                                        all.banks.accountDetails.bank.arraDD = arraDD;
+                                        if (all.banks.bankPoalimAsakimManual && all.banks.accountDetails.bank.arrDDAll[0].BANK_SNIF_ACCOUNT_KEY !== null) {
+                                            all.banks.accounts.poalimAsakimNew.loadOsh();
+                                        } else {
+                                            all.banks.accounts.poalimAsakimNew.sendAccDD(arrDD);
+                                        }
+                                        arraDD = null;
+                                    }
+                                })
+                            }
+                        }
+                    } catch (err) {
+                        all.banks.core.services.errorLog(err)
+                    }
+                }
             })
             .fail(function (error, resErr) {
-                if (error == 'discard') {
-                    all.banks.accounts.poalimAsakimNew.sendMatahCtrl()
+                if (resErr == 'error') {
+                    //myEmitterLogs( 27);
+                    $('#filecontainerlogin').attr('src', '')
                 }
             })
     }
-    poalimAsakimNew.getBase64FromImageUrlNew = function (urlXhrCheck, deta) {
-        var dfd = jQuery.Deferred();
-        poalimAsakimNew.getBase64FromImageUrlCounter += 1;
-        all.banks.core.services.httpReq(urlXhrCheck, 'GET', null, false, false)
-            .then(function (data) {
-                poalimAsakimNew.getBase64FromImageUrlCounter = 0;
-                try {
-                    var arrList = [];
-                    if (data !== undefined && data.list !== undefined && data.list.length > 0) {
-                        $(data.list).each(function (index, v) {
-                            var uuid = parseInt(v.bank) + '' + parseInt(v.branch) + '' + parseInt(v.account) + '' + parseInt(v.number) + '' + parseInt(deta.originalEventCreateDate) + '_' + all.banks.generalVariables.allDataArr.BankData[0].Account[0].BankNumber + '' + all.banks.generalVariables.allDataArr.BankData[0].Account[0].BranchNumber + '' + all.banks.generalVariables.allDataArr.BankData[0].Account[0].AccountNumber;
-                            arrList.push({
-                                "Asmachta": deta.referenceNumber || v.number,
-                                "CheckAccountNumber": v.account,
-                                "DepositeDate": deta.originalEventCreateDate || v.transactionDate,
-                                "CheckBankNumber": v.bank,
-                                "CheckBranchNumber": v.branch,
-                                "CheckNumber": v.number,
-                                "CheckTotal": v.amount,
-                                "ImageNameKey": uuid,
-                                "url": v.imageFrontLink && v.imageFrontLink.length > 0 && v.imageFrontLink.indexOf('000000000000000000000.png') === -1
-                                    ? [v.imageFrontLink, v.imageBackLink]
-                                        .filter(lnk => lnk && !lnk.includes('000000000000000000000.png'))
-                                        .map(lnk => ('https://biz2.bankhapoalim.co.il' + lnk))
-                                    : undefined
-                            });
-                            if (data.list.length == index + 1) {
-                                dfd.resolve(arrList);
-                            }
-                        })
-                    } else {
-                        all.banks.generalVariables.numChecksNotWithdrawn += 1;
-                        dfd.resolve([{
-                            "ImageNameKey": "x"
-                        }]);
-                    }
-                } catch (err) {
-                    all.banks.core.services.errorLog(err)
-                }
-            })
-            .fail(function (error, resErr) {
-                if (poalimAsakimNew.getBase64FromImageUrlCounter < 5) {
-                    dfd.reject(null);
-                } else {
-                    poalimAsakimNew.getBase64FromImageUrlCounter = 0;
-                    all.banks.generalVariables.numChecksNotWithdrawn += 1;
-                    dfd.resolve([{
-                        "ImageNameKey": "x"
-                    }]);
-                }
-            })
-        return dfd.promise();
-    };
     poalimAsakimNew.loadNextOsh = function (isNewNext) {
         myEmitterLogs(31);
         var req = {
@@ -5513,7 +7778,6 @@ all.banks.accounts.poalimAsakimNew = function () {
                                             };
                                             img.onerror = function () {
                                                 clearTimeout(timer);
-
                                                 v.imgs = [{
                                                     "ImageNameKey": "x"
                                                 }];
@@ -5881,29 +8145,6 @@ all.banks.accounts.poalimAsakimNew = function () {
             }]);
         }
         return dfd.promise();
-    };
-    poalimAsakimNew.returnNumAll = function (arrAll) {
-        function returnNum(arrNumbers, splits) {
-            var id;
-            if (splits) {
-                var arrs = arrNumbers.split('');
-            } else {
-                var arrs = arrNumbers;
-            }
-            $(arrs).each(function (i, v) {
-                var val = parseFloat(v);
-                if (!isNaN(val)) {
-                    id = i;
-                    return false;
-                }
-            });
-            return id;
-        }
-
-        var arrNumbers = returnNum(arrAll, true);
-        var arrRevers = returnNum(arrAll.split('').reverse(), false);
-        var sumFinish = parseFloat(arrAll.substring(arrNumbers, arrAll.length - arrRevers)) * -1;
-        return sumFinish;
     };
     poalimAsakimNew.loadAsharaiPrev = function (BANK_SNIF_ACCOUNT_KEY) {
         var asrashiNumCard = [];
@@ -7343,38 +9584,315 @@ all.banks.accounts.poalimAsakimNew = function () {
                 poalimAsakimNew.sendCardsCtrl();
             });
     };
-    poalimAsakimNew.returnClearSum = function (text) {
-        try {
-            var text = text.toString();
-            if (text !== undefined && text !== null) {
-                var sumClear = text.replace(/[^\d\.-]/g, "");
-                return sumClear;
-            } else {
-                return null;
-            }
-        } catch (e) {
-            return null;
-        }
-    }
-    poalimAsakimNew.alreadyFetchedInPrevious = function (signiture) {
-        if (!all.banks.generalVariables.allDataArrAshrai || all.banks.generalVariables.allDataArrAshrai.length === 0
-            || !signiture || !signiture['BranchNumber'] || !signiture['AccountNumber'] || !signiture['CardNumber']
-            || !signiture['NextBillingDate'] || !signiture['NextCycleTotal'] || !signiture['ValueDate']) {
-            return false;
-        }
+    poalimAsakimNew.loadDueChecks = function () {
+        all.banks.generalVariables.allDataArrDueChecks = [];
+        var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=auto&reqName=action&language=HE&transactionId=ChekimLemishmeretPeyrut&subMenuName=Shekel&ts=" + poalimAsakimNew.varGlobal.ts + "&tf=" + Math.random() + "&u=" + poalimAsakimNew.varGlobal.u + "&pSubMenu=Shekel&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=" + poalimAsakimNew.varGlobal.dwx + "&wScr=1920&hScr=1080&tcfo=" + poalimAsakimNew.varGlobal.tcfo + "&mmx=" + poalimAsakimNew.varGlobal.mmx + "&qwrt=" + poalimAsakimNew.varGlobal.qwrt + "&dtcdb=0&menuTranName=ChekimLemishmeretPeyrut";
+        all.banks.core.services.httpReq(url, 'GET', null, false, false)
+            .then(function (response, bbb, ccc) {
+                var expires = ccc.getResponseHeader("X-FRAME-OPTIONS");
+                if (expires == null) {
 
-        for (var idx = all.banks.generalVariables.allDataArrAshrai.length - 1; idx >= 0; idx--) {
-            var cardTrans = all.banks.generalVariables.allDataArrAshrai[idx];
-            if (cardTrans['CardNumber'] === signiture['CardNumber']
-                && cardTrans['NextBillingDate'] === signiture['NextBillingDate']
-                && cardTrans['NextCycleTotal'] === signiture['NextCycleTotal']
-                && cardTrans['ValueDate'] === signiture['ValueDate']
-                && cardTrans['BranchNumber'] === signiture['BranchNumber']
-                && cardTrans['AccountNumber'] === signiture['AccountNumber']) {
-                return true;
-            }
-        }
-        return false;
+                    poalimAsakimNew.setNewTime(function () {
+                        poalimAsakimNew.loadDueChecks();
+                    });
+                } else {
+                    try {
+                        var type = 102;
+                        var text = "מושך שיקים למשמרת";
+                        //all.banks.core.services.sendLogs(type, text);
+                        var res = all.banks.core.services.parseHtml(response);
+
+                        var ts = res.find('input[name="ts"]').val();
+                        var u = res.find('input[name="u"]').val();
+                        var dwx = res.find('input[name="dwx"]').val();
+                        var tcfo = res.find('input[name="tcfo"]').val();
+                        var qwrt = res.find('input[name="qwrt"]').val();
+                        var tsfo = res.find('input[name="tsfo"]').val();
+                        var mmx = res.find('input[name="mmx"]').val();
+                        var dwxReq = res.find('input[name="dwxReq"]').val();
+                        var dwxOp = res.find('input[name="dwxOp"]').val();
+                        var YOM_ASAKIM_MF = res.find('input[name="YOM_ASAKIM_MF"]').val();
+                        var sugCredit = res.find('input[name="sugCredit"]').val();
+                        var misparCredit = res.find('input[name="misparCredit"]').val();
+                        poalimAsakimNew.varGlobal.ts = ts;
+                        poalimAsakimNew.varGlobal.u = u;
+                        poalimAsakimNew.varGlobal.dwx = dwx;
+                        poalimAsakimNew.varGlobal.tcfo = tcfo;
+                        poalimAsakimNew.varGlobal.qwrt = qwrt;
+                        poalimAsakimNew.varGlobal.tsfo = tsfo;
+                        poalimAsakimNew.varGlobal.mmx = mmx;
+                        poalimAsakimNew.varGlobal.dwxReq = dwxReq;
+                        poalimAsakimNew.varGlobal.dwxOp = dwxOp;
+                        poalimAsakimNew.varGlobal.YOM_ASAKIM_MF = YOM_ASAKIM_MF;
+                        poalimAsakimNew.varGlobal.sugCredit = sugCredit;
+                        poalimAsakimNew.varGlobal.misparCredit = misparCredit;
+
+
+                        var accDetalisArr = $(res).find('#allAcountsList option:selected script').text().split('new Acc(')[1].split(")")[0].split(",");
+                        var snifNum = accDetalisArr[1].replace(/\D/g, "");
+                        var accNum = accDetalisArr[2].replace(/\D/g, "");
+                        var AccountNumber = parseInt(accNum);
+                        var BranchNumber = parseInt(snifNum);
+
+                        var rowsTable = res.find('#mytable_body tr.TR_ROW_BANKTABLE');
+                        var len = rowsTable.length;
+                        if (len) {
+                            rowsTable.each(function (i, v) {
+                                var v = $(v);
+                                var CheckDescription = null,
+                                    CheckTotal = null,
+                                    CheckAccountNumber = null,
+                                    CheckBranchNumber = null,
+                                    CheckBankNumber = null,
+                                    CheckNumber = null,
+                                    DepositeDate = null,
+                                    DueDate = null;
+
+                                if ($(v).children('td').eq(0).length) {
+                                    CheckDescription = $(v).children('td').eq(0).text();
+                                }
+                                if ($(v).children('td').eq(1).length) {
+                                    CheckTotal = $(v).children('td').eq(1).text().replace(/,/g, '');
+                                }
+                                if ($(v).children('td').eq(2).length) {
+                                    CheckAccountNumber = $(v).children('td').eq(2).text();
+                                }
+                                if ($(v).children('td').eq(3).length) {
+                                    CheckBranchNumber = $(v).children('td').eq(3).text();
+                                }
+                                if ($(v).children('td').eq(4).length) {
+                                    CheckBankNumber = $(v).children('td').eq(4).text();
+                                }
+                                if ($(v).children('td').eq(5).length) {
+                                    CheckNumber = $(v).children('td').eq(5).text();
+                                }
+                                if ($(v).children('td').eq(6).length && $(v).children('td').eq(6).text() !== "") {
+                                    var DepositeDateText = $(v).children('td').eq(6).text().split("/");
+                                    DepositeDate = "20" + DepositeDateText[2].replace(/\D/g, "") + '' + DepositeDateText[1].replace(/\D/g, "") + '' + DepositeDateText[0].replace(/\D/g, "");
+                                }
+                                if ($(v).children('td').eq(8).length && $(v).children('td').eq(8).text() !== "") {
+                                    var DueDateText = $(v).children('td').eq(8).text().split("/");
+                                    DueDate = "20" + DueDateText[2].replace(/\D/g, "") + '' + DueDateText[1].replace(/\D/g, "") + '' + DueDateText[0].replace(/\D/g, "");
+                                }
+                                all.banks.generalVariables.allDataArrDueChecks.push({
+                                    "BankNumber": 12,
+                                    "TargetId": all.banks.generalVariables.AccountNumber,
+                                    "Token": all.banks.generalVariables.branchNumber,
+                                    "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
+                                    "ExporterId": all.banks.spiderConfig.spiderId,
+                                    "BranchNumber": BranchNumber,
+                                    "AccountNumber": AccountNumber,
+                                    "CheckDescription": CheckDescription,
+                                    "CheckTotal": CheckTotal,
+                                    "CheckAccountNumber": CheckAccountNumber,
+                                    "CheckBranchNumber": CheckBranchNumber,
+                                    "CheckBankNumber": CheckBankNumber,
+                                    "CheckNumber": CheckNumber,
+                                    "DepositeDate": DepositeDate,
+                                    "DueDate": DueDate
+                                })
+
+                                if (len == (i + 1)) {
+                                    all.banks.accounts.poalimAsakimNew.sendDueChecksCtrl();
+                                    res = null;
+                                }
+                            })
+                        } else {
+                            all.banks.accounts.poalimAsakimNew.sendDueChecksCtrl();
+                            res = null;
+                        }
+                    } catch (e) {
+                        all.banks.accounts.poalimAsakimNew.sendDueChecksCtrl();
+                        res = null;
+                    }
+                }
+            })
+            .fail(function (error, resErr, urlParam) {
+                all.banks.accounts.poalimAsakimNew.sendDueChecksCtrl();
+            });
+    }
+    poalimAsakimNew.loadStandingOrders = function () {
+        all.banks.generalVariables.allDataArrStandingOrders = [];
+        var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=auto&reqName=action&language=HE&transactionId=HoraotKevaAndDebitInst&subMenuName=DealsNew&ts=" + poalimAsakimNew.varGlobal.ts + "&tf=" + Math.random() + "&u=" + poalimAsakimNew.varGlobal.u + "&pSubMenu=DealsNew&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=" + poalimAsakimNew.varGlobal.dwx + "&wScr=1920&hScr=1080&tcfo=" + poalimAsakimNew.varGlobal.tcfo + "&mmx=" + poalimAsakimNew.varGlobal.mmx + "&qwrt=" + poalimAsakimNew.varGlobal.qwrt + "&dtcdb=0&menuTranName=HoraotKevaAndDebitInst";
+        all.banks.core.services.httpReq(url, 'GET', null, false, false)
+            .then(function (response, bbb, ccc) {
+                var expires = ccc.getResponseHeader("X-FRAME-OPTIONS");
+                if (expires == null) {
+
+                    poalimAsakimNew.setNewTime(function () {
+                        poalimAsakimNew.loadStandingOrders();
+                    });
+                } else {
+                    //all.banks.core.services.sendLogs(type, text);
+                    try {
+                        var res = all.banks.core.services.parseHtml(response);
+
+                        var ts = res.find('input[name="ts"]').val();
+                        var u = res.find('input[name="u"]').val();
+                        var dwx = res.find('input[name="dwx"]').val();
+                        var tcfo = res.find('input[name="tcfo"]').val();
+                        var qwrt = res.find('input[name="qwrt"]').val();
+                        var tsfo = res.find('input[name="tsfo"]').val();
+                        var mmx = res.find('input[name="mmx"]').val();
+                        var dwxReq = res.find('input[name="dwxReq"]').val();
+                        var dwxOp = res.find('input[name="dwxOp"]').val();
+                        var YOM_ASAKIM_MF = res.find('input[name="YOM_ASAKIM_MF"]').val();
+                        var sugCredit = res.find('input[name="sugCredit"]').val();
+                        var misparCredit = res.find('input[name="misparCredit"]').val();
+                        poalimAsakimNew.varGlobal.ts = ts;
+                        poalimAsakimNew.varGlobal.u = u;
+                        poalimAsakimNew.varGlobal.dwx = dwx;
+                        poalimAsakimNew.varGlobal.tcfo = tcfo;
+                        poalimAsakimNew.varGlobal.qwrt = qwrt;
+                        poalimAsakimNew.varGlobal.tsfo = tsfo;
+                        poalimAsakimNew.varGlobal.mmx = mmx;
+                        poalimAsakimNew.varGlobal.dwxReq = dwxReq;
+                        poalimAsakimNew.varGlobal.dwxOp = dwxOp;
+                        poalimAsakimNew.varGlobal.YOM_ASAKIM_MF = YOM_ASAKIM_MF;
+                        poalimAsakimNew.varGlobal.sugCredit = sugCredit;
+                        poalimAsakimNew.varGlobal.misparCredit = misparCredit;
+
+
+                        var accDetalisArr = $(res).find('#allAcountsList option:selected script').text().split('new Acc(')[1].split(")")[0].split(",");
+                        var snifNum = accDetalisArr[1].replace(/\D/g, "");
+                        var accNum = accDetalisArr[2].replace(/\D/g, "");
+                        var AccountNumber = parseInt(accNum);
+                        var BranchNumber = parseInt(snifNum);
+
+                        function reverse(s) {
+                            return s.split("").reverse().join("");
+                        }
+
+                        var rowsTable = res.find('#tbodyPaymentRights tr.TR_ROW_BANKTABLE');
+                        var len = rowsTable.length;
+                        if (len) {
+                            rowsTable.each(function (i, v) {
+                                var v = $(v);
+                                var OrderName = null,
+                                    OrderOpeningDate = null,
+                                    OrderLastDate = null,
+                                    OrderTotal = null,
+                                    OrderNumber = null,
+                                    Asmachta = null;
+
+                                if ($(v).children('td').eq(5).length && $(v).children('td').eq(5).text().replace(/\s/g, "") !== "") {
+                                    OrderName = reverse($(v).children('td').eq(5).text());
+                                }
+                                if ($(v).children('td').eq(2).length && $(v).children('td').eq(2).text().replace(/\s/g, "") !== "") {
+                                    var OrderLastDateVal = $(v).children('td').eq(2).text().split("/");
+                                    OrderLastDate = OrderLastDateVal[2].replace(/\D/g, "") + '' + OrderLastDateVal[1].replace(/\D/g, "") + '' + OrderLastDateVal[0].replace(/\D/g, "");
+                                }
+                                var rowNext = $(v).next().find("#WHITE_BANKTABLE tbody tr").eq(1).find("td");
+                                if (rowNext.length) {
+                                    var OrderOpeningDateVal = rowNext.eq(0).text().split("/");
+                                    OrderOpeningDate = OrderOpeningDateVal[2].replace(/\D/g, "") + '' + OrderOpeningDateVal[1].replace(/\D/g, "") + '' + OrderOpeningDateVal[0].replace(/\D/g, "");
+                                    if (rowNext.length == 2) {
+                                        OrderNumber = rowNext.eq(1).text().replace(/\D/g, "");
+                                    }
+                                    if (rowNext.length == 3) {
+                                        OrderNumber = rowNext.eq(2).text().replace(/\D/g, "");
+                                    }
+                                }
+                                if ($(v).children('td').eq(1).length && $(v).children('td').eq(1).text().replace(/\s/g, "") !== "") {
+                                    OrderTotal = poalimAsakimNew.returnClearSum($(v).children("td").eq(1).text());
+                                }
+                                all.banks.generalVariables.allDataArrStandingOrders.push({
+                                    "TargetId": all.banks.accountDetails.bank.targetId,
+                                    "Token": all.banks.accountDetails.bank.token,
+                                    "BankNumber": parseInt(all.banks.accountDetails.bank.BankNumber),
+                                    "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
+                                    "ExporterId": all.banks.spiderConfig.spiderId,
+                                    "AccountNumber": AccountNumber,
+                                    "BranchNumber": BranchNumber,
+                                    "OrderName": OrderName,
+                                    "OrderOpeningDate": OrderOpeningDate,
+                                    "OrderLastDate": OrderLastDate,
+                                    "OrderTotal": OrderTotal,
+                                    "OrderNumber": OrderNumber,
+                                    "Asmachta": null,
+                                    BankTransferNumber: null,
+                                    BranchTransferNumber: null,
+                                    AccountTransferNumber: null,
+                                    NamePayerTransfer: null,
+                                    Type: 2,
+                                });
+                                if (len == (i + 1)) {
+                                    //loadHoraotKeva();
+                                    all.banks.accounts.poalimAsakimNew.sendStandingOrdersCtrl();
+                                    res = null;
+                                }
+                            })
+                        } else {
+                            //loadHoraotKeva();
+                            all.banks.accounts.poalimAsakimNew.sendStandingOrdersCtrl();
+                            res = null;
+                        }
+
+                        function loadHoraotKeva() {
+                            var rowsTableHoraotKeva = res.find('#tbodyHoraotKeva tr.TR_ROW_BANKTABLE');
+                            var leng = rowsTableHoraotKeva.length;
+                            if (leng) {
+                                rowsTableHoraotKeva.each(function (i, v) {
+                                    var v = $(v);
+                                    var OrderName = null,
+                                        OrderOpeningDate = null,
+                                        OrderLastDate = null,
+                                        OrderTotal = null,
+                                        OrderNumber = null,
+                                        Asmachta = null;
+
+                                    if ($(v).children('td').eq(8).length) {
+                                        OrderName = reverse($(v).children('td').eq(8).text());
+                                    }
+
+                                    if ($(v).children('td').eq(1).length) {
+                                        OrderTotal = poalimAsakimNew.returnClearSum($(v).children("td").eq(1).text())
+                                    }
+                                    if ($(v).children('td').eq(9).length) {
+                                        OrderNumber = $(v).children('td').eq(9).text();
+                                    }
+                                    if ($(v).children('td').eq(4).length && $(v).children('td').eq(4).text().replace(/\s/g, "") !== "") {
+                                        Asmachta = $(v).children('td').eq(4).text();
+                                    }
+                                    all.banks.generalVariables.allDataArrStandingOrders.push({
+                                        "TargetId": all.banks.accountDetails.bank.targetId,
+                                        "Token": all.banks.accountDetails.bank.token,
+                                        "BankNumber": parseInt(all.banks.accountDetails.bank.BankNumber),
+                                        "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
+                                        "ExporterId": all.banks.spiderConfig.spiderId,
+                                        "AccountNumber": AccountNumber,
+                                        "BranchNumber": BranchNumber,
+                                        "OrderName": OrderName,
+                                        "OrderOpeningDate": OrderOpeningDate,
+                                        "OrderLastDate": OrderLastDate,
+                                        "OrderTotal": OrderTotal,
+                                        "OrderNumber": OrderNumber,
+                                        "Asmachta": Asmachta,
+                                        BankTransferNumber: null,
+                                        BranchTransferNumber: null,
+                                        AccountTransferNumber: null,
+                                        NamePayerTransfer: null,
+                                        Type: 2,
+                                    });
+                                    if (leng == (i + 1)) {
+                                        all.banks.accounts.poalimAsakimNew.sendStandingOrdersCtrl();
+                                        res = null;
+                                    }
+                                })
+                            } else {
+                                all.banks.accounts.poalimAsakimNew.sendStandingOrdersCtrl();
+                                res = null;
+                            }
+                        }
+                    } catch (err) {
+                        all.banks.accounts.poalimAsakimNew.sendStandingOrdersCtrl();
+                        res = null;
+                    }
+                }
+            })
+            .fail(function (error, resErr, urlParam) {
+                all.banks.accounts.poalimAsakimNew.sendStandingOrdersCtrl();
+            });
     }
     poalimAsakimNew.loadNextCard = function () {
         var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=user&reqName=action&language=HE&transactionId=CurrCCNewSummary*all&subMenuName=CreditCards&ts=" + poalimAsakimNew.varGlobal.ts + "&tf=" + Math.random() + "&u=" + poalimAsakimNew.varGlobal.u + "&pSubMenu=CreditCards&fromSubMenu=CreditCards&bxx=912&nsv=y&dwx=" + poalimAsakimNew.varGlobal.dwx + "&wScr=1920&hScr=1080&tcfo=" + poalimAsakimNew.varGlobal.tcfo + "&mmx=" + poalimAsakimNew.varGlobal.mmx + "&qwrt=" + poalimAsakimNew.varGlobal.qwrt + "&tsfo=" + poalimAsakimNew.varGlobal.tsfo + "&dtcdb=0&menuTranName=CurrCCNewSummary*all";
@@ -8146,1130 +10664,300 @@ all.banks.accounts.poalimAsakimNew = function () {
                 all.banks.accounts.poalimAsakimNew.sendPikdonotCtrl();
             });
     }
+    poalimAsakimNew.loadMatah = function () {
+        all.banks.generalVariables.allDataArr = {
+            "ExporterId": all.banks.spiderConfig.spiderId,
+            "BankData": [{
+                "TargetId": all.banks.spiderConfig.spiderId,
+                "Token": all.banks.generalVariables.branchNumber,
+                "BankNumber": all.banks.accountDetails.bank.BankNumber,
+                "ExtractDate": all.banks.accountDetails.bank.ExtractDate,
+                "Account": []
+            }]
+        };
+        var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=auto&reqName=action&language=HE&transactionId=ItrotMatach&subMenuName=ForeinCurrency&ts=" + poalimAsakimNew.varGlobal.ts + "&tf=" + Math.random() + "&u=" + poalimAsakimNew.varGlobal.u + "&pSubMenu=Shekel&fromSubMenu=ForeinCurrency&bxx=912&nsv=y&dwx=" + poalimAsakimNew.varGlobal.dwx + "&wScr=1920&hScr=1080&tcfo=" + poalimAsakimNew.varGlobal.tcfo + "&mmx=" + poalimAsakimNew.varGlobal.mmx + "&qwrt=" + poalimAsakimNew.varGlobal.qwrt + "&dtcdb=0&menuTranName=ItrotMatach";
+        all.banks.core.services.httpReq(url, 'GET', null, false, false)
+            .then(function (data, bbb, ccc) {
+                var expires = ccc.getResponseHeader("X-FRAME-OPTIONS");
+                if (expires == null) {
 
-    poalimAsakimNew.loadDepositsNew = async function () {
-        const started = Date.now();
-        const ARR_TRANS_DAY_TO_RUN = all.banks.accountDetails.bank.arrDDAll.filter((it) => (it.IND_NILVIM > 0)).map((item, idx) => {
-            return Object.assign(item, {
-                idx,
-                bankParams: ("12-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[1] + "-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
-                BankNumber: 12,
-                AccountNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
-                BranchNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[1]),
-            })
-        });
-
-        const listOfArguments = ARR_TRANS_DAY_TO_RUN;
-        const listOfArgumentsSlice = (ARR_TRANS_DAY_TO_RUN.length / Number(poalimAsakimNew.numberOfOperationsNilvim));
-
-        const asyncOperation = param => {
-            return new Promise(async resolve => {
-                monitorActivityClass.setIntervalActivity();
-                await resolveCookies();
-                console.log('step 1------ Running Index account: ' + param.idx);
-                console.log(all.banks.core.services.logAlertsBanks(30, JSON.stringify(all.banks.accountDetails.bank.arrDDAll[param.idx])));
-
-                const text = "מתחיל Deposits לחשבון" + " " + all.banks.accountDetails.bank.arrDDAll[param.idx].BANK_SNIF_ACCOUNT_KEY;
-                console.log(all.banks.core.services.logAlertsBanks(10, text));
-
-
-                const allDataArrDeposits = [];
-                let req_savingsDeposits = false;
-                try {
-                    var urlXhr = "https://biz2.bankhapoalim.co.il/ServerServices/deposits-and-savings/composite?accountId=" + param.bankParams + "&view=totals";
-                    let data = await resolveSender({
-                        urls: [urlXhr],
-                        method: "GET",
-                        body: null,
-                        headers: null,
+                    poalimAsakimNew.setNewTime(function () {
+                        poalimAsakimNew.loadMatah();
                     });
-                    if (data && data.response && data.response.length && data.response[0].response) {
-                        data = data.response[0].response;
-                        if (data && data.messageCode === undefined) {
-                            var url1 = "https://biz2.bankhapoalim.co.il/ServerServices/deposits-and-savings/deposits?accountId=" + param.bankParams + "&view=details";
-                            let res = await resolveSender({
-                                urls: [url1],
-                                method: "GET",
-                                body: null,
-                                headers: null,
-                            });
-                            if (res && res.response && res.response.length && res.response[0].response) {
-                                res = res.response[0].response;
-                                if (res && res.list !== undefined && res.list.length) {
-                                    for (let indx = 0; indx < res.list.length; indx++) {
-                                        const va = res.list[indx];
-                                        for (let idx11 = 0; idx11 < va.data.length; idx11++) {
-                                            const v = va.data[idx11];
-                                            allDataArrDeposits.push({
-                                                "TargetId": all.banks.accountDetails.bank.targetId,
-                                                "Token": all.banks.accountDetails.bank.token,
-                                                "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
-                                                "ExporterId": all.banks.spiderConfig.spiderId,
-                                                'BankNumber': param.BankNumber,
-                                                'AccountNumber': param.AccountNumber,
-                                                'BranchNumber': param.BranchNumber,
-                                                "TypeName": v.shortProductName,
-                                                "DepositTotal": v.principalAmount,
-                                                "DepositAsTotal": v.revaluedTotalAmount,
-                                                "DueDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.paymentDate)),
-                                                "DepositDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.agreementOpeningDate)),
-                                                "DepositExistStation": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.paymentDate)),
-                                                "DepositNumber": v.depositSerialId,
-                                                "DepositInterest": v.adjustedInterest
-                                            });
-                                        }
-                                    }
-                                    req_savingsDeposits = true;
-                                } else {
-                                    req_savingsDeposits = true;
-                                }
-                            }
-                        }
-                    }
-                } catch (err) {
-                    req_savingsDeposits = true;
-                }
-
-                if (req_savingsDeposits) {
+                } else {
                     try {
-                        var urls = "https://biz2.bankhapoalim.co.il/ServerServices/deposits-and-savings/savingsDeposits?accountId=" + param.bankParams + "&view=details";
-                        let data = await resolveSender({
-                            urls: [urls],
-                            method: "GET",
-                            body: null,
-                            headers: null,
-                        });
-                        if (data && data.response && data.response.length && data.response[0].response) {
-                            data = data.response[0].response;
-                            if (data && data.list !== undefined && data.list.length) {
-                                $(data.list).each(function (indx, va) {
-                                    $(va.data).each(function (idx, v) {
-                                        allDataArrDeposits.push({
-                                            "TargetId": all.banks.accountDetails.bank.targetId,
-                                            "Token": all.banks.accountDetails.bank.token,
-                                            'BankNumber': param.BankNumber,
-                                            'AccountNumber': param.AccountNumber,
-                                            'BranchNumber': param.BranchNumber,
-                                            "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
-                                            "ExporterId": all.banks.spiderConfig.spiderId,
-                                            "TypeName": v.shortSavingDepositName,
-                                            "DepositTotal": v.principalAmount,
-                                            "DepositAsTotal": v.revaluedBalance,
-                                            "DueDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.agreementOpeningDate)),
-                                            "DepositDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.agreementOpeningDate)),
-                                            "DepositExistStation": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.paymentDate)),
-                                            "DepositNumber": v.eventNumber,
-                                            "DepositInterest": null
+                        var data = all.banks.core.services.parseHtml(data);
+                        var ts = data.find('input[name="ts"]').val();
+                        var u = data.find('input[name="u"]').val();
+                        var dwx = data.find('input[name="dwx"]').val();
+                        var tcfo = data.find('input[name="tcfo"]').val();
+                        var qwrt = data.find('input[name="qwrt"]').val();
+                        var tsfo = data.find('input[name="tsfo"]').val();
+                        var mmx = data.find('input[name="mmx"]').val();
+                        var dwxReq = data.find('input[name="dwxReq"]').val();
+                        var dwxOp = data.find('input[name="dwxOp"]').val();
+                        var YOM_ASAKIM_MF = data.find('input[name="YOM_ASAKIM_MF"]').val();
+                        poalimAsakimNew.varGlobal.ts = ts;
+                        poalimAsakimNew.varGlobal.u = u;
+                        poalimAsakimNew.varGlobal.dwx = dwx;
+                        poalimAsakimNew.varGlobal.tcfo = tcfo;
+                        poalimAsakimNew.varGlobal.qwrt = qwrt;
+                        poalimAsakimNew.varGlobal.tsfo = tsfo;
+                        poalimAsakimNew.varGlobal.mmx = mmx;
+                        poalimAsakimNew.varGlobal.dwxReq = dwxReq;
+                        poalimAsakimNew.varGlobal.dwxOp = dwxOp;
+                        poalimAsakimNew.varGlobal.YOM_ASAKIM_MF = YOM_ASAKIM_MF;
+                        var req = {
+                            'input_fromAgg': $(data).find('input[name="input_fromAgg"]').val(),
+                            'reqName': $(data).find('input[name="reqName"]').val(),
+                            'transactionId': "MatachTran",
+                            'menuParam': $(data).find('input[name="menuParam"]').val(),
+                            'PGcode': $(data).find('input[name="PGcode"]').val(),
+                            'step': $(data).find('input[name="step"]').val(),
+                            'u': poalimAsakimNew.varGlobal.u,
+                            'tcfo': poalimAsakimNew.varGlobal.tcfo,
+                            'tsfo': poalimAsakimNew.varGlobal.tsfo,
+                            'mmx': poalimAsakimNew.varGlobal.mmx,
+                            "fromSubMenu": "ForeinCurrency",
+                            'qwrt': poalimAsakimNew.varGlobal.qwrt,
+                            'mpux': "",
+                            'targetView': "",
+                            'dwx': poalimAsakimNew.varGlobal.dwx,
+                            'dwxReq': poalimAsakimNew.varGlobal.dwxReq,
+                            'dwxOp': poalimAsakimNew.varGlobal.dwxOp,
+                            'doc_key': $(data).find('input[name="doc_key"]').val(),
+                            'callerTid': $(data).find('input[name="callerTid"]').val(),
+                            'WTcomeFrom': $(data).find('input[name="WTcomeFrom"]').val(),
+                            'YOM_ASAKIM_MF': poalimAsakimNew.varGlobal.YOM_ASAKIM_MF,
+                            'accountIndex': all.banks.accounts.poalimAsakimNew.indDDAll(all.banks.accounts.poalimAsakimNew.vddVal.BANK_SNIF_ACCOUNT_KEY),
+                            'txtToDate': all.banks.accounts.poalimAsakimNew.vddVal.datebacksleshToMatah,
+                            'txtFromDate': all.banks.accounts.poalimAsakimNew.vddVal.datebacksleshMatah,
+                            'changeDates': 'yes',
+                            'dontClearTrInfo': 'yes',
+                            'currencySelected': '9999',
+                            'actionSelected': '9999',
+                            'SelectSugCurrency': '9999',
+                            'SelectSugAction': '9999'
+                        };
+                        all.banks.core.services.httpReq("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc", 'POST', req, true, false)
+                            .then(function (res, bbb, ccc) {
+                                var expires = ccc.getResponseHeader("X-FRAME-OPTIONS");
+                                if (expires == null) {
+
+                                    poalimAsakimNew.setNewTime(function () {
+                                        poalimAsakimNew.loadMatah();
+                                    });
+                                } else {
+                                    var res = all.banks.core.services.parseHtml(res);
+                                    var ts = res.find('input[name="ts"]').val();
+                                    var u = res.find('input[name="u"]').val();
+                                    var dwx = res.find('input[name="dwx"]').val();
+                                    var tcfo = res.find('input[name="tcfo"]').val();
+                                    var qwrt = res.find('input[name="qwrt"]').val();
+                                    var tsfo = res.find('input[name="tsfo"]').val();
+                                    var mmx = res.find('input[name="mmx"]').val();
+                                    var dwxReq = res.find('input[name="dwxReq"]').val();
+                                    var dwxOp = res.find('input[name="dwxOp"]').val();
+                                    var YOM_ASAKIM_MF = res.find('input[name="YOM_ASAKIM_MF"]').val();
+                                    poalimAsakimNew.varGlobal.ts = ts;
+                                    poalimAsakimNew.varGlobal.u = u;
+                                    poalimAsakimNew.varGlobal.dwx = dwx;
+                                    poalimAsakimNew.varGlobal.tcfo = tcfo;
+                                    poalimAsakimNew.varGlobal.qwrt = qwrt;
+                                    poalimAsakimNew.varGlobal.tsfo = tsfo;
+                                    poalimAsakimNew.varGlobal.mmx = mmx;
+                                    poalimAsakimNew.varGlobal.dwxReq = dwxReq;
+                                    poalimAsakimNew.varGlobal.dwxOp = dwxOp;
+                                    poalimAsakimNew.varGlobal.YOM_ASAKIM_MF = YOM_ASAKIM_MF;
+                                    var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=auto&reqName=action&language=HE&transactionId=ItrotMatach&subMenuName=ForeinCurrency&ts=" + poalimAsakimNew.varGlobal.ts + "&tf=" + Math.random() + "&u=" + poalimAsakimNew.varGlobal.u + "&pSubMenu=Shekel&fromSubMenu=ForeinCurrency&bxx=912&nsv=y&dwx=" + poalimAsakimNew.varGlobal.dwx + "&wScr=1920&hScr=1080&tcfo=" + poalimAsakimNew.varGlobal.tcfo + "&mmx=" + poalimAsakimNew.varGlobal.mmx + "&qwrt=" + poalimAsakimNew.varGlobal.qwrt + "&dtcdb=0&menuTranName=ItrotMatach";
+                                    all.banks.core.services.httpReq(url, 'GET', null, false, false)
+                                        .then(function (data, bbb, ccc) {
+                                            var expires = ccc.getResponseHeader("X-FRAME-OPTIONS");
+                                            if (expires == null) {
+
+                                                poalimAsakimNew.setNewTime(function () {
+                                                    poalimAsakimNew.loadMatah();
+                                                });
+                                            } else {
+                                                var data = all.banks.core.services.parseHtml(data);
+                                                var ts = data.find('input[name="ts"]').val();
+                                                var u = data.find('input[name="u"]').val();
+                                                var dwx = data.find('input[name="dwx"]').val();
+                                                var tcfo = data.find('input[name="tcfo"]').val();
+                                                var qwrt = data.find('input[name="qwrt"]').val();
+                                                var tsfo = data.find('input[name="tsfo"]').val();
+                                                var mmx = data.find('input[name="mmx"]').val();
+                                                var dwxReq = data.find('input[name="dwxReq"]').val();
+                                                var dwxOp = data.find('input[name="dwxOp"]').val();
+                                                var YOM_ASAKIM_MF = data.find('input[name="YOM_ASAKIM_MF"]').val();
+
+                                                poalimAsakimNew.varGlobal.ts = ts;
+                                                poalimAsakimNew.varGlobal.u = u;
+                                                poalimAsakimNew.varGlobal.dwx = dwx;
+                                                poalimAsakimNew.varGlobal.tcfo = tcfo;
+                                                poalimAsakimNew.varGlobal.qwrt = qwrt;
+                                                poalimAsakimNew.varGlobal.tsfo = tsfo;
+                                                poalimAsakimNew.varGlobal.mmx = mmx;
+                                                poalimAsakimNew.varGlobal.dwxReq = dwxReq;
+                                                poalimAsakimNew.varGlobal.dwxOp = dwxOp;
+                                                poalimAsakimNew.varGlobal.YOM_ASAKIM_MF = YOM_ASAKIM_MF;
+                                                var rowsTypes = data.find("#someDataDivPrint #tableToggleRow tr.TR_ROW_BANKTABLE");
+                                                if (rowsTypes.length) {
+
+                                                    var accDetalisArr = res.find('#allAcountsList option:selected script').text().split('new Acc(')[1].split(")")[0].split(",");
+                                                    var snifNum = accDetalisArr[1].replace(/\D/g, "");
+                                                    var accNum = accDetalisArr[2].replace(/\D/g, "");
+                                                    var AccountNumber = parseInt(accNum);
+                                                    var BranchNumber = parseInt(snifNum);
+
+                                                    $(rowsTypes).each(function (ind, val) {
+                                                        var tr = $(val);
+                                                        if (tr.attr("style") == undefined && tr.attr("name") == undefined) {
+                                                            var rowTextTitle = poalimAsakimNew.reverseComment(tr.children("td").eq(5).text()).replace(/\s+/g, " ");
+                                                            var acc = {
+                                                                'BankNumber': 12,
+                                                                'AccountNumber': AccountNumber,
+                                                                'BranchNumber': BranchNumber,
+                                                                'Balance': poalimAsakimNew.returnClearSum(tr.children("td").eq(2).text()),//0,
+                                                                'AccountCredit': null,
+                                                                "BankAccountTypeId": tr.children("td").eq(6).text().replace(/\D/g, ""),
+                                                                "CurrencyId": all.banks.core.services.getTypeCurrencyAll(rowTextTitle, true)
+                                                            };
+                                                            all.banks.generalVariables.allDataArr.BankData[0].Account.push(acc);
+                                                            all.banks.generalVariables.allDataArr.BankData[0].Account[all.banks.generalVariables.allDataArr.BankData[0].Account.length - 1].DataRow = [];
+                                                        }
+                                                        if (ind + 1 == rowsTypes.length) {
+                                                            getRowsmatah(res);
+                                                        }
+                                                    });
+                                                } else {
+                                                    getRowsmatah(res);
+                                                }
+                                            }
+                                        })
+                                        .fail(function (error, resErr) {
+                                            getRowsmatah(res);
                                         });
-                                    })
-                                });
-                            } else {
 
-                            }
-                        }
-                    } catch (err) {
-
-                    }
-                }
-
-
-                try {
-                    if (allDataArrDeposits.length) {
-                        console.log('Last step ------ found ' + allDataArrDeposits.length + ' Pikdonot of Index account: ' + param.idx);
-                        await all.banks.core.services.sendPikdonotServer(allDataArrDeposits);
-                    }
-                    resolve(true);
-                } catch (error) {
-                    resolve(true);
-                }
-            })
-        };
-
-        function resolveSender(item) {
-            return new Promise(resolve => {
-                let timeToTry = 0;
-                const callWs = function () {
-                    timeToTry += 1;
-                    console.log('start callWs')
-                    monitorActivityClass.setIntervalActivity();
-                    let params = Object.assign(item, {
-                        cookies: document.cookie,
-                        token: poalimAsakimNew.xsrfToken,
-                        numberOfOperations: poalimAsakimNew.numberOfOperationsNilvim
-                    });
-                    if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
-                        params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
-                    }
-                    parallelReq(params, function (output) {
-                        console.log('got res callWs')
-                        monitorActivityClass.setIntervalActivity();
-
-                        try {
-                            console.log(output.response);
-                            const numOfLogsOut = output.response.filter(it => it.statusCode === 403);
-                            const numOfLogsOutError = output.response.filter(it => it.error !== false);
-                            // numForLogsOut += numOfLogsOut.length;
-                            if (numOfLogsOut.length > 0 || (numOfLogsOutError.length && timeToTry < 2)) {
-                                // numForLogsOut = 0;
-                                if (numOfLogsOut.length > 0) {
-                                    all.banks.accounts.poalimAsakimNew.middleOfWork = true;
-                                    all.banks.accounts.poalimAsakimNew.renewLogin().then(() => {
-                                        if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                                            let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
-                                            if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                                err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
-                                            }
-                                            all.banks.core.services.errorLog(err);
-                                            poalimAsakimNew.haltAndWaitForReload = true;
-                                            poalimAsakimNew.logOutNew();
-                                            return;
+                                    function getRowsmatah(res) {
+                                        function reverse(s) {
+                                            return s.split("").reverse().join("");
                                         }
-                                        callWs()
-                                    });
-                                } else {
-                                    callWs()
-                                }
-                            } else {
-                                if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                                    let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
-                                    if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                        err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
-                                    }
-                                    all.banks.core.services.errorLog(err);
-                                    poalimAsakimNew.haltAndWaitForReload = true;
-                                    myEmitterLogs('Sent data Successfully');
-                                    poalimAsakimNew.logOutNew();
-                                    return;
-                                }
-                                output.response.forEach(v => {
-                                    if (v.response && typeof (v.response) === 'string' && (v.response.includes('<html') || v.response === '')) {
-                                        v.response = null;
-                                    }
-                                });
-                                output.response.filter(item => item.error !== false).forEach(v => {
-                                    v.response = null;
-                                });
-                                resolve(output);
-                            }
-                        } catch (e) {
-                            console.log(e);
-                        } finally {
 
-                        }
-                    })
-                }
-                callWs()
-            });
-        }
+                                        var accDetalisArr = res.find('#allAcountsList option:selected script').text().split('new Acc(')[1].split(")")[0].split(",");
+                                        var snifNum = accDetalisArr[1].replace(/\D/g, "");
+                                        var accNum = accDetalisArr[2].replace(/\D/g, "");
+                                        var AccountNumber = parseInt(accNum);
+                                        var BranchNumber = parseInt(snifNum);
 
-        function resolveCookies() {
-            return new Promise(resolve => {
-                win.cookies.getAll({}, function (cool) {
-                    cool.forEach(function (v) {
-                        if (!v.domain.includes('bizibox')) {
-                            document.cookie = v.name + "=" + v.value + ";";
-                        }
-                    })
-                    resolve(true);
-                });
-            });
-        }
+                                        var rowsOfTable = res.find("#someDataDivPrint").children("table.arial12NoBold").find('algoritem[takepartfromcash="TITLE_HEB"]').next().find("tr");
+                                        if (rowsOfTable.length) {
+                                            var title = {};
+                                            var accToAddTo = undefined;
+                                            rowsOfTable.each(function (i, v) {
+                                                try {
+                                                    var val = $(v);
+                                                    if (val.hasClass("TR_TOTAL") && !val.find("today_msg").length) {
+                                                        title.isDaily = 0;
+                                                        var paramSplit = val.text().split(":");
+                                                        if (paramSplit.length == 3) {
+                                                            var idxParam = 2;
+                                                        } else if (paramSplit.length == 2) {
+                                                            var idxParam = 1;
+                                                        }
+                                                        var rowTextTitle = poalimAsakimNew.reverseComment(paramSplit[idxParam]).replace(/\s+/g, " ");
+                                                        title.bankaccounttypeId = rowTextTitle.replace(/\D/g, "");
+                                                        title.currencyid = all.banks.core.services.getTypeCurrencyAll(rowTextTitle, true);
 
-        function timeoutSpace() {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    resolve(true);
-                }, 1500);
-            });
-        }
+                                                        accToAddTo = all.banks.generalVariables.allDataArr.BankData[0].Account
+                                                            .find(function (prevCreatedAcc) {
+                                                                return prevCreatedAcc.BankAccountTypeId === title.bankaccounttypeId
+                                                                    && prevCreatedAcc.CurrencyId === title.currencyid
+                                                                    && prevCreatedAcc.AccountNumber === AccountNumber;
+                                                            });
+                                                        if (!accToAddTo) {
+                                                            var acc = {
+                                                                'BankNumber': 12,
+                                                                'AccountNumber': AccountNumber,
+                                                                'BranchNumber': BranchNumber,
+                                                                'Balance': 0,
+                                                                'AccountCredit': null,
+                                                                "BankAccountTypeId": title.bankaccounttypeId,
+                                                                "CurrencyId": title.currencyid,
+                                                                "DataRow": []
+                                                            };
+                                                            all.banks.generalVariables.allDataArr.BankData[0].Account.push(acc);
+//                                                                                                    all.banks.generalVariables.allDataArr.BankData[0].Account[all.banks.generalVariables.allDataArr.BankData[0].Account.length - 1].DataRow = [];
+                                                            accToAddTo = acc;
+                                                        }
+                                                    }
+                                                    if (val.hasClass("TR_TOTAL") && val.find("today_msg").length) {
+                                                        title.isDaily = 1;
+                                                    }
+                                                    if (val.hasClass("TR_ROW_BANKTABLE") && val.attr("name") == undefined) {
+                                                        var tdTextDesc = val.children("td").eq(6).find("table tr td");
+                                                        var transDesc = poalimAsakimNew.reverseComment(tdTextDesc.eq(0).text()) + " " + tdTextDesc.eq(2).text();
+                                                        var desc = val.children("td").eq(0).text();
+                                                        if (desc.replace(/\s+/g, "") !== "") {
+                                                            transDesc += " " + poalimAsakimNew.reverseComment(desc.replace(/\s+/g, " "));
+                                                        }
+                                                        var valueDate = val.children("td").eq(7).text();
+                                                        var sum = null;
+                                                        var sumZehut = val.children("td").eq(3).text().replace(/\s/g, "");
+                                                        var sumHova = val.children("td").eq(4).text().replace(/\s/g, "");
+                                                        var transactionType = null;
+                                                        if (sumZehut == '') {
+                                                            sum = poalimAsakimNew.returnClearSum(sumHova);
+                                                            transactionType = '0';
+                                                        } else {
+                                                            sum = poalimAsakimNew.returnClearSum(sumZehut);
+                                                            transactionType = '1';
+                                                        }
+                                                        var balance = poalimAsakimNew.returnClearSum(val.children("td").eq(2).text());
+                                                        var asmachta = val.children("td").eq(1).text().replace(/\s/g, "");
 
-        async function parallel() {
-            async function parallelSlices(idxArr) {
-                console.log(('תחילת ריצת '
-                    +
-                    poalimAsakimNew.numberOfOperationsNilvim
-                    +
-                    ' חשבונות נוספים, אינדקס מספר: '
-                    +
-                    idxArr));
-                const slicePos = (Number(poalimAsakimNew.numberOfOperationsNilvim) * idxArr);
-                const argsCopy = [].concat(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).map((val, ind) => ({
-                    val,
-                    ind
-                })));
-                const result = new Array(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).length);
-                const promises = new Array(Number(poalimAsakimNew.numberOfOperationsNilvim)).fill(Promise.resolve()); //set how many items will run parallel together
-
-                function chainNext(p) {
-                    if (argsCopy.length) {
-                        const arg = argsCopy.shift();
-                        return p.then(() => {
-                            const operationPromise = asyncOperation(arg.val).then(r => {
-                                console.log('סיום ריצת חשבון-----' + arg.ind, r);
-                                result[arg.ind] = r;
-                            });
-                            return chainNext(operationPromise);
-                        });
-                    }
-                    return p;
-                }
-
-                await Promise.all(promises.map(chainNext));
-                console.log(('סיום ריצת '
-                    +
-                    Number(poalimAsakimNew.numberOfOperationsNilvim)
-                    +
-                    ' חשבונות נוספים, אינדקס מספר: '
-                    +
-                    idxArr), result);
-                return result;
-            }
-
-            let resultArray = [];
-            let listNum = 0;
-            for (let idx = 0; idx < listOfArgumentsSlice; idx++) {
-                const result = await parallelSlices(idx);
-                resultArray = resultArray.concat(result);
-                const currentNumAcc = ((idx + 1) * Number(poalimAsakimNew.numberOfOperationsNilvim));
-                const floorNum = Math.floor(currentNumAcc / Number(poalimAsakimNew.numOfAccForRenewLoginNilvim))
-                if (listNum !== floorNum) {
-                    listNum = floorNum;
-                    await all.banks.accounts.poalimAsakimNew.renewLogin();
-                }
-                await timeoutSpace();
-            }
-            return resultArray;
-        }
-
-        parallel().then(async (res) => {
-            const elapsed = Date.now() - started;
-            myEmitterLogs('Finished to collect all loadDeposits of all accounts at ' + (elapsed / 1000) + 'ms');
-            all.banks.accounts.poalimAsakimNew.loadLoanNew();
-        });
-    }
-    poalimAsakimNew.loadLoanNew = async function () {
-        const started = Date.now();
-        const ARR_TRANS_DAY_TO_RUN = all.banks.accountDetails.bank.arrDDAll.filter((it) => (it.IND_NILVIM > 0)).map((item, idx) => {
-            return Object.assign(item, {
-                idx,
-                bankParams: ("12-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[1] + "-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
-                BankNumber: 12,
-                AccountNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
-                BranchNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[1]),
-            })
-        });
-
-        const listOfArguments = ARR_TRANS_DAY_TO_RUN;
-        const listOfArgumentsSlice = (ARR_TRANS_DAY_TO_RUN.length / Number(poalimAsakimNew.numberOfOperationsNilvim));
-
-        const asyncOperation = param => {
-            return new Promise(async resolve => {
-                monitorActivityClass.setIntervalActivity();
-                await resolveCookies();
-                console.log('step 1------ Running Index account: ' + param.idx);
-                console.log(all.banks.core.services.logAlertsBanks(30, JSON.stringify(all.banks.accountDetails.bank.arrDDAll[param.idx])));
-
-                const text = "מתחיל loadLoan לחשבון" + " " + all.banks.accountDetails.bank.arrDDAll[param.idx].BANK_SNIF_ACCOUNT_KEY;
-                console.log(all.banks.core.services.logAlertsBanks(10, text));
-                const allDataArrLoan = [];
-                try {
-                    var urlXhr = "https://biz2.bankhapoalim.co.il/ServerServices/credit-and-mortgage/businessLoans/loans?accountId=" + param.bankParams + "&creditCurrencyCode=-1&creditSystemSubCategory=0&dataDetailingLevelCode=1&interestTypeCode=-1&linkageMethodCode=-1&unitedCreditTypeCode=-1";
-                    let data = await resolveSender({
-                        urls: [urlXhr],
-                        method: "GET",
-                        body: null,
-                        headers: null,
-                    });
-                    if (data && data.response && data.response.length && data.response[0].response) {
-                        data = data.response[0].response;
-                        if (data && data.loans && data.loans.length) {
-                            for (let indx = 0; indx < data.loans.length; indx++) {
-                                const v = data.loans[indx];
-                                if (v.creditCurrencyCode === 1) {
-                                    var url1 = "https://biz2.bankhapoalim.co.il/ServerServices/credit-and-mortgage/loans/"
-                                        + v.creditSerialNumber + "?accountId=" + param.bankParams
-                                        + "&creditCurrencyCode=" + v.creditCurrencyCode
-                                        + "&creditLimitCode=" + data.creditLimitCode
-                                        + "&detailedAccountTypeCode=" + v.detailedAccountTypeCode
-                                        + "&unitedCreditTypeCode=" + v.unitedCreditTypeCode
-                                        + "&lang=he&type=loan&view=business";
-                                    let res = await resolveSender({
-                                        urls: [url1],
-                                        method: "GET",
-                                        body: null,
-                                        headers: null,
-                                    });
-                                    if (res && res.response && res.response.length && res.response[0].response) {
-                                        res = res.response[0].response;
-                                        allDataArrLoan.push({
-                                            "TargetId": all.banks.accountDetails.bank.targetId,
-                                            "Token": all.banks.accountDetails.bank.token,
-                                            "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
-                                            "ExporterId": all.banks.spiderConfig.spiderId,
-                                            'BankNumber': param.BankNumber,
-                                            'AccountNumber': param.AccountNumber,
-                                            'BranchNumber': param.BranchNumber,
-                                            "LoanName": v.creditTypeDescription,
-                                            "LoanNumber": v.creditSerialNumber,
-                                            "LoanIntrest": res.currentInterestPercent,
-                                            "LoanFinish": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(res.loanEndDate)),
-                                            "LoanTotalLeft": res.amortizationSchedulePrincipalBalance, // res.actualPrincipalBalance,
-                                            "LoanDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(res.valueDate)),
-                                            "PaymentsNumberLeft": res.principalPaymentsNumberBalance,
-                                            "LoanOriginalTotal": v.originalLoanPrincipalAmount,
-                                            "NextPaymentTotal": v.nextPaymentAmount,
-                                            "LoanNextPaymentDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v.nextPaymentDate)),
-                                            "LoanPigurTotal": res.messages && res.messages.length && res.messages[0]['messageCode'] && res.messages[0]['messageCode'] === 4894 ? null : res.arrearTotalAmount,
-                                            "LoanType": v.unitedCreditTypeCode, // null,
-                                            "NumOfPayments": res.originalPrincipalPaymentsNumber,
-                                            "NumOfInterestPayments": res.originalInterestPaymentsNumber,
-                                            "LastPaymentTotal": null,
-                                            "GraceNextPaymentDate": null,
-                                            "GraceNextPaymentTotal": null,
-                                            "LoanFirstPaymentDate": null,
-                                            "InterestFirstPaymentDate": null
-                                        });
-                                    }
-                                }
-                            }
-
-                        }
-                    }
-                } catch (err) {
-
-                }
-
-                try {
-                    if (allDataArrLoan.length) {
-                        console.log('Last step ------ found ' + allDataArrLoan.length + ' Loans of Index account: ' + param.idx);
-                        await all.banks.core.services.sendLoanServer(allDataArrLoan);
-                    }
-                    resolve(true);
-                } catch (error) {
-                    resolve(true);
-                }
-            })
-        };
-
-        function resolveSender(item) {
-            return new Promise(resolve => {
-                let timeToTry = 0;
-                const callWs = function () {
-                    timeToTry += 1;
-                    console.log('start callWs')
-                    monitorActivityClass.setIntervalActivity();
-
-                    let params = Object.assign(item, {
-                        cookies: document.cookie,
-                        token: poalimAsakimNew.xsrfToken,
-                        numberOfOperations: poalimAsakimNew.numberOfOperationsNilvim
-                    });
-                    if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
-                        params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
-                    }
-                    parallelReq(params, function (output) {
-                        console.log('got res callWs')
-                        monitorActivityClass.setIntervalActivity();
-
-                        try {
-                            console.log(output.response);
-                            const numOfLogsOut = output.response.filter(it => it.statusCode === 403);
-                            const numOfLogsOutError = output.response.filter(it => it.error !== false);
-                            // numForLogsOut += numOfLogsOut.length;
-                            if (numOfLogsOut.length > 0 || (numOfLogsOutError.length && timeToTry < 2)) {
-                                // numForLogsOut = 0;
-                                if (numOfLogsOut.length > 0) {
-                                    all.banks.accounts.poalimAsakimNew.middleOfWork = true;
-                                    all.banks.accounts.poalimAsakimNew.renewLogin().then(() => {
-                                        if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                                            let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
-                                            if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                                err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
-                                            }
-                                            all.banks.core.services.errorLog(err);
-                                            poalimAsakimNew.haltAndWaitForReload = true;
-                                            poalimAsakimNew.logOutNew();
-                                            return;
-                                        }
-                                        callWs()
-                                    });
-                                } else {
-                                    callWs()
-                                }
-                            } else {
-                                if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                                    let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
-                                    if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                        err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
-                                    }
-                                    all.banks.core.services.errorLog(err);
-                                    poalimAsakimNew.haltAndWaitForReload = true;
-                                    myEmitterLogs('Sent data Successfully');
-                                    poalimAsakimNew.logOutNew();
-                                    return;
-                                }
-                                output.response.forEach(v => {
-                                    if (v.response && typeof (v.response) === 'string' && (v.response.includes('<html') || v.response === '')) {
-                                        v.response = null;
-                                    }
-                                });
-                                output.response.filter(item => item.error !== false).forEach(v => {
-                                    v.response = null;
-                                });
-                                resolve(output);
-                            }
-                        } catch (e) {
-                            console.log(e);
-                        } finally {
-
-                        }
-                    })
-                }
-                callWs()
-            });
-        }
-
-        function resolveCookies() {
-            return new Promise(resolve => {
-                win.cookies.getAll({}, function (cool) {
-                    cool.forEach(function (v) {
-                        if (!v.domain.includes('bizibox')) {
-                            document.cookie = v.name + "=" + v.value + ";";
-                        }
-                    })
-                    resolve(true);
-                });
-            });
-        }
-
-        function timeoutSpace() {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    resolve(true);
-                }, 1500);
-            });
-        }
-
-        async function parallel() {
-            async function parallelSlices(idxArr) {
-                console.log(('תחילת ריצת '
-                    +
-                    poalimAsakimNew.numberOfOperationsNilvim
-                    +
-                    ' חשבונות נוספים, אינדקס מספר: '
-                    +
-                    idxArr));
-                const slicePos = (Number(poalimAsakimNew.numberOfOperationsNilvim) * idxArr);
-                const argsCopy = [].concat(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).map((val, ind) => ({
-                    val,
-                    ind
-                })));
-                const result = new Array(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).length);
-                const promises = new Array(Number(poalimAsakimNew.numberOfOperationsNilvim)).fill(Promise.resolve()); //set how many items will run parallel together
-
-                function chainNext(p) {
-                    if (argsCopy.length) {
-                        const arg = argsCopy.shift();
-                        return p.then(() => {
-                            const operationPromise = asyncOperation(arg.val).then(r => {
-                                console.log('סיום ריצת חשבון-----' + arg.ind, r);
-                                result[arg.ind] = r;
-                            });
-                            return chainNext(operationPromise);
-                        });
-                    }
-                    return p;
-                }
-
-                await Promise.all(promises.map(chainNext));
-                console.log(('סיום ריצת '
-                    +
-                    Number(poalimAsakimNew.numberOfOperationsNilvim)
-                    +
-                    ' חשבונות נוספים, אינדקס מספר: '
-                    +
-                    idxArr), result);
-                return result;
-            }
-
-            let resultArray = [];
-            let listNum = 0;
-            for (let idx = 0; idx < listOfArgumentsSlice; idx++) {
-                const result = await parallelSlices(idx);
-                resultArray = resultArray.concat(result);
-                const currentNumAcc = ((idx + 1) * Number(poalimAsakimNew.numberOfOperationsNilvim));
-                const floorNum = Math.floor(currentNumAcc / Number(poalimAsakimNew.numOfAccForRenewLoginNilvim))
-                if (listNum !== floorNum) {
-                    listNum = floorNum;
-                    await all.banks.accounts.poalimAsakimNew.renewLogin();
-                }
-                await timeoutSpace();
-            }
-            return resultArray;
-        }
-
-        parallel().then(async (res) => {
-            const elapsed = Date.now() - started;
-            myEmitterLogs('Finished to collect all loadLoan of all accounts at ' + (elapsed / 1000) + 'ms');
-            poalimAsakimNew.loadDueChecksNew();
-        });
-    }
-    poalimAsakimNew.loadDueChecksNew = async function () {
-        const started = Date.now();
-        const ARR_TRANS_DAY_TO_RUN = all.banks.accountDetails.bank.arrDDAll.filter((it) => (it.IND_NILVIM > 0)).map((item, idx) => {
-            return Object.assign(item, {
-                idx,
-                bankParams: ("12-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[1] + "-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
-                BankNumber: 12,
-                AccountNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
-                BranchNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[1]),
-            })
-        });
-
-        const listOfArguments = ARR_TRANS_DAY_TO_RUN;
-        const listOfArgumentsSlice = (ARR_TRANS_DAY_TO_RUN.length / Number(poalimAsakimNew.numberOfOperationsNilvim));
-
-        const asyncOperation = param => {
-            return new Promise(async resolve => {
-                monitorActivityClass.setIntervalActivity();
-                await resolveCookies();
-                console.log('step 1------ Running Index account: ' + param.idx);
-                console.log(all.banks.core.services.logAlertsBanks(30, JSON.stringify(all.banks.accountDetails.bank.arrDDAll[param.idx])));
-
-                const text = "מתחיל loadDueChecks לחשבון" + " " + all.banks.accountDetails.bank.arrDDAll[param.idx].BANK_SNIF_ACCOUNT_KEY;
-                console.log(all.banks.core.services.logAlertsBanks(10, text));
-
-                const allDataArrDueChecks = [];
-                var dateBasic = new Date(new Date().getFullYear(), new Date().getMonth(), (new Date().getDate() + 1));
-                var dateFrom = dateBasic.getFullYear() + '' + ("0" + (dateBasic.getMonth() + 1)).slice(-2) + ("0" + (dateBasic.getDate())).slice(-2);
-                var dateToFormat = new Date(new Date().getFullYear(), new Date().getMonth() + 36, new Date().getDate());
-                var dateTo = dateToFormat.getFullYear() + '' + ("0" + (dateToFormat.getMonth() + 1)).slice(-2) + ("0" + (dateToFormat.getDate())).slice(-2);
-                const commonPart = {
-                    'TargetId': all.banks.accountDetails.bank.targetId,
-                    'Token': all.banks.accountDetails.bank.token,
-                    'BankNumber': param.BankNumber,
-                    'AccountNumber': param.AccountNumber,
-                    'BranchNumber': param.BranchNumber,
-                    'ExtractDate': new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
-                    'ExporterId': all.banks.spiderConfig.spiderId
-                };
-
-                try {
-                    var urlXhr = "https://biz2.bankhapoalim.co.il/ServerServices/current-account/cheques?accountId=" + param.bankParams + "&endDate=" + dateTo + "&startDate=" + dateFrom + "&type=totals&view=custodyBySettedDate";
-                    let data = await resolveSender({
-                        urls: [urlXhr],
-                        method: "GET",
-                        body: null,
-                        headers: null,
-                    });
-                    if (data && data.response && data.response.length && data.response[0].response) {
-                        data = data.response[0].response;
-                        let chequesPerDateList = data && Array.isArray(data.chequesPerDateList) ? data.chequesPerDateList : [];
-                        for (let idx = 0; idx < chequesPerDateList.length && !poalimAsakimNew.haltAndWaitForReload; idx++) {
-                            const paymentDate = chequesPerDateList[idx].paymentDate;
-                            try {
-                                let result = await resolveSender({
-                                    urls: ["https://biz2.bankhapoalim.co.il/ServerServices/current-account/cheques?accountId=" + param.bankParams
-                                    + "&paymentDate=" + paymentDate
-                                    + "&type=details&view=custody"],
-                                    method: "GET",
-                                    body: null,
-                                    headers: null,
-                                });
-                                if (result && result.response && result.response.length && result.response[0].response) {
-                                    result = result.response[0].response;
-                                    if (result && Array.isArray(result.chequeInCustodyList)) {
-                                        for (let va of result.chequeInCustodyList) {
-                                            allDataArrDueChecks.push(
-                                                Object.assign({
-                                                    "CheckNumber": va.referenceNumber,
-                                                    "CheckDescription": va.eventNumber,
-                                                    "DepositeDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(va.depositDate)),
-                                                    "DueDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(va.paymentDate)),
-                                                    "CheckTotal": va.chequeAmount,
-                                                    "CheckBankNumber": va.payingBankNumber,
-                                                    "CheckAccountNumber": va.payingAccountNumber,
-                                                    "CheckBranchNumber": va.payingBranchNumber
-                                                }, commonPart));
+                                                        var dataRows = accToAddTo ? accToAddTo.DataRow
+                                                            : all.banks.generalVariables.allDataArr.BankData[0].Account[all.banks.generalVariables.allDataArr.BankData[0].Account.length - 1].DataRow;
+                                                        dataRows.push({
+                                                            "Asmachta": asmachta.replace(/\D/g, ""),
+                                                            "TransDesc": transDesc.replace(/\s/g, " ").trim(),
+                                                            "ValueDate": valueDate.split("/")[0] + "/" + valueDate.split("/")[1] + "/20" + valueDate.split("/")[2],
+                                                            "TransactionType": transactionType,
+                                                            "TransTotal": poalimAsakimNew.returnClearSum(sum),
+                                                            "Balance": balance,
+                                                            "IsDaily": title.isDaily,
+                                                            "imgs": null
+                                                        });
+                                                    }
+                                                } catch (e) {
+                                                    writeLog('Failed to process matah row: ' + e);
+                                                }
+                                                if (i + 1 == rowsOfTable.length) {
+                                                    all.banks.accounts.poalimAsakimNew.sendMatahCtrl();
+                                                    res = null;
+                                                    rowsOfTable = null;
+                                                }
+                                            })
+                                        } else {
+                                            all.banks.accounts.poalimAsakimNew.sendMatahCtrl();
+                                            res = null;
+                                            rowsOfTable = null;
                                         }
                                     }
-
                                 }
-                            } catch (e) {
-                                writeLog(e);
-                            }
-                        }
+                            })
+                            .fail(function (error, resErr) {
+                                all.banks.accounts.poalimAsakimNew.sendMatahCtrl();
+                            })
+                    } catch (e) {
+                        all.banks.accounts.poalimAsakimNew.sendMatahCtrl();
                     }
-                } catch (exc) {
-                    writeLog(exc);
-                } finally {
-
                 }
 
-                try {
-                    if (allDataArrDueChecks.length) {
-                        console.log('Last step ------ found ' + allDataArrDueChecks.length + ' DueChecks of Index account: ' + param.idx);
-                        await all.banks.core.services.sendDueChecksServer(allDataArrDueChecks);
-                    }
-                    resolve(true);
-                } catch (error) {
-                    resolve(true);
-                }
             })
-        };
-
-        function resolveSender(item) {
-            return new Promise(resolve => {
-                let timeToTry = 0;
-                const callWs = function () {
-                    timeToTry += 1;
-                    console.log('start callWs')
-                    monitorActivityClass.setIntervalActivity();
-
-                    let params = Object.assign(item, {
-                        cookies: document.cookie,
-                        token: poalimAsakimNew.xsrfToken,
-                        numberOfOperations: poalimAsakimNew.numberOfOperationsNilvim
-                    });
-                    if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
-                        params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
-                    }
-                    parallelReq(params, function (output) {
-                        console.log('got res callWs')
-                        monitorActivityClass.setIntervalActivity();
-
-                        try {
-                            console.log(output.response);
-                            const numOfLogsOut = output.response.filter(it => it.statusCode === 403);
-                            const numOfLogsOutError = output.response.filter(it => it.error !== false);
-                            // numForLogsOut += numOfLogsOut.length;
-                            if (numOfLogsOut.length > 0 || (numOfLogsOutError.length && timeToTry < 2)) {
-                                // numForLogsOut = 0;
-                                if (numOfLogsOut.length > 0) {
-                                    all.banks.accounts.poalimAsakimNew.middleOfWork = true;
-                                    all.banks.accounts.poalimAsakimNew.renewLogin().then(() => {
-                                        if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                                            let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
-                                            if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                                err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
-                                            }
-                                            all.banks.core.services.errorLog(err);
-                                            poalimAsakimNew.haltAndWaitForReload = true;
-                                            poalimAsakimNew.logOutNew();
-                                            return;
-                                        }
-                                        callWs()
-                                    });
-                                } else {
-                                    callWs()
-                                }
-                            } else {
-                                if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                                    let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
-                                    if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                        err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
-                                    }
-                                    all.banks.core.services.errorLog(err);
-                                    poalimAsakimNew.haltAndWaitForReload = true;
-                                    myEmitterLogs('Sent data Successfully');
-                                    poalimAsakimNew.logOutNew();
-                                    return;
-                                }
-                                output.response.forEach(v => {
-                                    if (v.response && typeof (v.response) === 'string' && (v.response.includes('<html') || v.response === '')) {
-                                        v.response = null;
-                                    }
-                                });
-                                output.response.filter(item => item.error !== false).forEach(v => {
-                                    v.response = null;
-                                });
-                                resolve(output);
-                            }
-                        } catch (e) {
-                            console.log(e);
-                        } finally {
-
-                        }
-                    })
-                }
-                callWs()
-            });
-        }
-
-        function resolveCookies() {
-            return new Promise(resolve => {
-                win.cookies.getAll({}, function (cool) {
-                    cool.forEach(function (v) {
-                        if (!v.domain.includes('bizibox')) {
-                            document.cookie = v.name + "=" + v.value + ";";
-                        }
-                    })
-                    resolve(true);
-                });
-            });
-        }
-
-        function timeoutSpace() {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    resolve(true);
-                }, 1500);
-            });
-        }
-
-        async function parallel() {
-            async function parallelSlices(idxArr) {
-                console.log(('תחילת ריצת '
-                    +
-                    poalimAsakimNew.numberOfOperationsNilvim
-                    +
-                    ' חשבונות נוספים, אינדקס מספר: '
-                    +
-                    idxArr));
-                const slicePos = (Number(poalimAsakimNew.numberOfOperationsNilvim) * idxArr);
-                const argsCopy = [].concat(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).map((val, ind) => ({
-                    val,
-                    ind
-                })));
-                const result = new Array(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).length);
-                const promises = new Array(Number(poalimAsakimNew.numberOfOperationsNilvim)).fill(Promise.resolve()); //set how many items will run parallel together
-
-                function chainNext(p) {
-                    if (argsCopy.length) {
-                        const arg = argsCopy.shift();
-                        return p.then(() => {
-                            const operationPromise = asyncOperation(arg.val).then(r => {
-                                console.log('סיום ריצת חשבון-----' + arg.ind, r);
-                                result[arg.ind] = r;
-                            });
-                            return chainNext(operationPromise);
-                        });
-                    }
-                    return p;
-                }
-
-                await Promise.all(promises.map(chainNext));
-                console.log(('סיום ריצת '
-                    +
-                    Number(poalimAsakimNew.numberOfOperationsNilvim)
-                    +
-                    ' חשבונות נוספים, אינדקס מספר: '
-                    +
-                    idxArr), result);
-                return result;
-            }
-
-            let resultArray = [];
-            let listNum = 0;
-            for (let idx = 0; idx < listOfArgumentsSlice; idx++) {
-                const result = await parallelSlices(idx);
-                resultArray = resultArray.concat(result);
-                const currentNumAcc = ((idx + 1) * Number(poalimAsakimNew.numberOfOperationsNilvim));
-                const floorNum = Math.floor(currentNumAcc / Number(poalimAsakimNew.numOfAccForRenewLoginNilvim))
-                if (listNum !== floorNum) {
-                    listNum = floorNum;
-                    await all.banks.accounts.poalimAsakimNew.renewLogin();
-                }
-                await timeoutSpace();
-            }
-            return resultArray;
-        }
-
-        parallel().then(async (res) => {
-            const elapsed = Date.now() - started;
-            myEmitterLogs('Finished to collect all loadDueChecksNew of all accounts at ' + (elapsed / 1000) + 'ms');
-            poalimAsakimNew.loadStandingOrdersNew();
-        });
-    }
-    poalimAsakimNew.loadStandingOrdersNew = async function () {
-        const started = Date.now();
-        const ARR_TRANS_DAY_TO_RUN = all.banks.accountDetails.bank.arrDDAll.filter((it) => (it.IND_NILVIM > 0)).map((item, idx) => {
-            return Object.assign(item, {
-                idx,
-                bankParams: ("12-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[1] + "-" + item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
-                BankNumber: 12,
-                AccountNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[0]),
-                BranchNumber: parseInt(item.BANK_SNIF_ACCOUNT_KEY.split('-')[1]),
+            .fail(function (error, resErr) {
+                all.banks.accounts.poalimAsakimNew.sendMatahCtrl();
             })
-        });
-
-        const listOfArguments = ARR_TRANS_DAY_TO_RUN;
-        const listOfArgumentsSlice = (ARR_TRANS_DAY_TO_RUN.length / Number(poalimAsakimNew.numberOfOperationsNilvim));
-
-        const asyncOperation = param => {
-            return new Promise(async resolve => {
-                monitorActivityClass.setIntervalActivity();
-                await resolveCookies();
-                console.log('step 1------ Running Index account: ' + param.idx);
-                console.log(all.banks.core.services.logAlertsBanks(30, JSON.stringify(all.banks.accountDetails.bank.arrDDAll[param.idx])));
-
-                const text = "מתחיל loadDueChecks לחשבון" + " " + all.banks.accountDetails.bank.arrDDAll[param.idx].BANK_SNIF_ACCOUNT_KEY;
-                console.log(all.banks.core.services.logAlertsBanks(10, text));
-
-
-                const allDataArrStandingOrders = [];
-
-
-                try {
-                    let urlXhr = "https://biz2.bankhapoalim.co.il/ServerServices/current-account/standingOrders?accountId=" + param.bankParams;
-                    let data = await resolveSender({
-                        urls: [urlXhr],
-                        method: "GET",
-                        body: null,
-                        headers: null,
-                    });
-                    if (data && data.response && data.response.length && data.response[0].response) {
-                        data = data.response[0].response;
-                        if (data && (typeof (data) === 'object') && data.length) {
-                            $(data).each(function (indx, va) {
-                                allDataArrStandingOrders.push({
-                                    "TargetId": all.banks.accountDetails.bank.targetId,
-                                    "Token": all.banks.accountDetails.bank.token,
-                                    'BankNumber': param.BankNumber,
-                                    'AccountNumber': param.AccountNumber,
-                                    'BranchNumber': param.BranchNumber,
-                                    "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
-                                    "ExporterId": all.banks.spiderConfig.spiderId,
-                                    "OrderName": va.standingOrderProductDescription,
-                                    "OrderOpeningDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(va.updatingDate)),
-                                    "OrderLastDate": null,
-                                    "OrderTotal": va.standingOrderAmount,
-                                    "OrderNumber": va.accountOrderId,
-                                    "Asmachta": null,
-                                    BankTransferNumber: va.creditedBankNumber,
-                                    BranchTransferNumber: va.transferDestinationReference,
-                                    AccountTransferNumber: va.transferSubDestinationReference,
-                                    NamePayerTransfer: null,
-                                    Type: 2
-                                });
-                            });
-
-                        } else {
-
-                        }
-                    }
-
-                } catch (err) {
-
-                }
-
-
-                try {
-                    var urlXhr = "https://biz2.bankhapoalim.co.il/ServerServices/current-account/debitAuthorizations?accountId=" + param.bankParams;
-                    let res = await resolveSender({
-                        urls: [urlXhr],
-                        method: "GET",
-                        body: null,
-                        headers: null,
-                    });
-                    if (res && res.response && res.response.length && res.response[0].response) {
-                        res = res.response[0].response;
-                        if (res && Array.isArray(res.debitAuthorizations) && res.debitAuthorizations.length) {
-                            $(res.debitAuthorizations).each(function (indx1, va1) {
-                                allDataArrStandingOrders.push({
-                                    "TargetId": all.banks.accountDetails.bank.targetId,
-                                    "Token": all.banks.accountDetails.bank.token,
-                                    "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
-                                    "ExporterId": all.banks.spiderConfig.spiderId,
-                                    'BankNumber': param.BankNumber,
-                                    'AccountNumber': param.AccountNumber,
-                                    'BranchNumber': param.BranchNumber,
-                                    "OrderName": va1.institutionName,
-                                    "OrderOpeningDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(va1.agreementOpeningDate)),
-                                    "OrderLastDate": !va1.debitDate ? null : all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(va1.debitDate)),
-                                    "OrderTotal": va1.debitAmount,
-                                    "OrderNumber": va1.institutionShortSerialId,
-                                    "Asmachta": null,
-                                    BankTransferNumber: null,
-                                    BranchTransferNumber: null,
-                                    AccountTransferNumber: null,
-                                    NamePayerTransfer: null,
-                                    Type: 1,
-                                });
-                            });
-                        } else {
-
-
-                        }
-                    }
-
-                } catch (err) {
-
-                }
-
-                try {
-                    if (allDataArrStandingOrders.length) {
-                        console.log('Last step ------ found ' + allDataArrStandingOrders.length + ' StandingOrders of Index account: ' + param.idx);
-                        await all.banks.core.services.sendStandingOrdersServer(allDataArrStandingOrders);
-                    }
-                    resolve(true);
-                } catch (error) {
-                    resolve(true);
-                }
-            })
-        };
-
-        function resolveSender(item) {
-            return new Promise(resolve => {
-                let timeToTry = 0;
-                const callWs = function () {
-                    timeToTry += 1;
-                    console.log('start callWs')
-                    monitorActivityClass.setIntervalActivity();
-                    let params = Object.assign(item, {
-                        cookies: document.cookie,
-                        token: poalimAsakimNew.xsrfToken,
-                        numberOfOperations: poalimAsakimNew.numberOfOperationsNilvim
-                    });
-                    if (window.navigator.platform.indexOf('Win') === -1 && !window.all.banks.vpnConnected) {
-                        params['proxy'] = ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225');
-                    }
-                    parallelReq(params, function (output) {
-                        console.log('got res callWs')
-                        monitorActivityClass.setIntervalActivity();
-
-                        try {
-                            console.log(output.response);
-                            const numOfLogsOut = output.response.filter(it => it.statusCode === 403);
-                            const numOfLogsOutError = output.response.filter(it => it.error !== false);
-                            // numForLogsOut += numOfLogsOut.length;
-                            if (numOfLogsOut.length > 0 || (numOfLogsOutError.length && timeToTry < 2)) {
-                                // numForLogsOut = 0;
-                                if (numOfLogsOut.length > 0) {
-                                    all.banks.accounts.poalimAsakimNew.middleOfWork = true;
-                                    all.banks.accounts.poalimAsakimNew.renewLogin().then(() => {
-                                        if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                                            let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
-                                            if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                                err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
-                                            }
-                                            all.banks.core.services.errorLog(err);
-                                            poalimAsakimNew.haltAndWaitForReload = true;
-                                            poalimAsakimNew.logOutNew();
-                                            return;
-                                        }
-                                        callWs()
-                                    });
-                                } else {
-                                    callWs()
-                                }
-                            } else {
-                                if (output.response.some(item => item.headers && item.headers.location && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => (item.headers.location).includes(urlPart)))) {
-                                    let err = new Error("Redirected to perhaps because of another otp session started somewhere. Terminating with error.");
-                                    if (item.headers.location === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                                        err = new Error("Redirected to " + item.headers.location + " perhaps because the bank announces that the service is temporarily unavailable.");
-                                    }
-                                    all.banks.core.services.errorLog(err);
-                                    poalimAsakimNew.haltAndWaitForReload = true;
-                                    myEmitterLogs('Sent data Successfully');
-                                    poalimAsakimNew.logOutNew();
-                                    return;
-                                }
-                                output.response.forEach(v => {
-                                    if (v.response && typeof (v.response) === 'string' && (v.response.includes('<html') || v.response === '')) {
-                                        v.response = null;
-                                    }
-                                });
-                                output.response.filter(item => item.error !== false).forEach(v => {
-                                    v.response = null;
-                                });
-                                resolve(output);
-                            }
-                        } catch (e) {
-                            console.log(e);
-                        } finally {
-
-                        }
-                    })
-                }
-                callWs()
-            });
-        }
-
-        function resolveCookies() {
-            return new Promise(resolve => {
-                win.cookies.getAll({}, function (cool) {
-                    cool.forEach(function (v) {
-                        if (!v.domain.includes('bizibox')) {
-                            document.cookie = v.name + "=" + v.value + ";";
-                        }
-                    })
-                    resolve(true);
-                });
-            });
-        }
-
-        function timeoutSpace() {
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    resolve(true);
-                }, 1500);
-            });
-        }
-
-        async function parallel() {
-            async function parallelSlices(idxArr) {
-                console.log(('תחילת ריצת '
-                    +
-                    poalimAsakimNew.numberOfOperationsNilvim
-                    +
-                    ' חשבונות נוספים, אינדקס מספר: '
-                    +
-                    idxArr));
-                const slicePos = (Number(poalimAsakimNew.numberOfOperationsNilvim) * idxArr);
-                const argsCopy = [].concat(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).map((val, ind) => ({
-                    val,
-                    ind
-                })));
-                const result = new Array(listOfArguments.slice((slicePos), (slicePos + Number(poalimAsakimNew.numberOfOperationsNilvim))).length);
-                const promises = new Array(Number(poalimAsakimNew.numberOfOperationsNilvim)).fill(Promise.resolve()); //set how many items will run parallel together
-
-                function chainNext(p) {
-                    if (argsCopy.length) {
-                        const arg = argsCopy.shift();
-                        return p.then(() => {
-                            const operationPromise = asyncOperation(arg.val).then(r => {
-                                console.log('סיום ריצת חשבון-----' + arg.ind, r);
-                                result[arg.ind] = r;
-                            });
-                            return chainNext(operationPromise);
-                        });
-                    }
-                    return p;
-                }
-
-                await Promise.all(promises.map(chainNext));
-                console.log(('סיום ריצת '
-                    +
-                    Number(poalimAsakimNew.numberOfOperationsNilvim)
-                    +
-                    ' חשבונות נוספים, אינדקס מספר: '
-                    +
-                    idxArr), result);
-                return result;
-            }
-
-            let resultArray = [];
-            let listNum = 0;
-            for (let idx = 0; idx < listOfArgumentsSlice; idx++) {
-                const result = await parallelSlices(idx);
-                resultArray = resultArray.concat(result);
-                const currentNumAcc = ((idx + 1) * Number(poalimAsakimNew.numberOfOperationsNilvim));
-                const floorNum = Math.floor(currentNumAcc / Number(poalimAsakimNew.numOfAccForRenewLoginNilvim))
-                if (listNum !== floorNum) {
-                    listNum = floorNum;
-                    await all.banks.accounts.poalimAsakimNew.renewLogin();
-                }
-                await timeoutSpace();
-            }
-            return resultArray;
-        }
-
-        parallel().then(async (res) => {
-            const elapsed = Date.now() - started;
-            myEmitterLogs('Finished to collect all loadStandingOrdersNew of all accounts at ' + (elapsed / 1000) + 'ms');
-            poalimAsakimNew.logOutNew();
-        });
     }
     poalimAsakimNew.loadLoan = function () {
         all.banks.generalVariables.allDataArrLoan = [];
@@ -9694,742 +11382,6 @@ all.banks.accounts.poalimAsakimNew = function () {
                 all.banks.accounts.poalimAsakimNew.sendLoanCtrl();
             });
     }
-
-    poalimAsakimNew.loadDueChecks = function () {
-        all.banks.generalVariables.allDataArrDueChecks = [];
-        var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=auto&reqName=action&language=HE&transactionId=ChekimLemishmeretPeyrut&subMenuName=Shekel&ts=" + poalimAsakimNew.varGlobal.ts + "&tf=" + Math.random() + "&u=" + poalimAsakimNew.varGlobal.u + "&pSubMenu=Shekel&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=" + poalimAsakimNew.varGlobal.dwx + "&wScr=1920&hScr=1080&tcfo=" + poalimAsakimNew.varGlobal.tcfo + "&mmx=" + poalimAsakimNew.varGlobal.mmx + "&qwrt=" + poalimAsakimNew.varGlobal.qwrt + "&dtcdb=0&menuTranName=ChekimLemishmeretPeyrut";
-        all.banks.core.services.httpReq(url, 'GET', null, false, false)
-            .then(function (response, bbb, ccc) {
-                var expires = ccc.getResponseHeader("X-FRAME-OPTIONS");
-                if (expires == null) {
-
-                    poalimAsakimNew.setNewTime(function () {
-                        poalimAsakimNew.loadDueChecks();
-                    });
-                } else {
-                    try {
-                        var type = 102;
-                        var text = "מושך שיקים למשמרת";
-                        //all.banks.core.services.sendLogs(type, text);
-                        var res = all.banks.core.services.parseHtml(response);
-
-                        var ts = res.find('input[name="ts"]').val();
-                        var u = res.find('input[name="u"]').val();
-                        var dwx = res.find('input[name="dwx"]').val();
-                        var tcfo = res.find('input[name="tcfo"]').val();
-                        var qwrt = res.find('input[name="qwrt"]').val();
-                        var tsfo = res.find('input[name="tsfo"]').val();
-                        var mmx = res.find('input[name="mmx"]').val();
-                        var dwxReq = res.find('input[name="dwxReq"]').val();
-                        var dwxOp = res.find('input[name="dwxOp"]').val();
-                        var YOM_ASAKIM_MF = res.find('input[name="YOM_ASAKIM_MF"]').val();
-                        var sugCredit = res.find('input[name="sugCredit"]').val();
-                        var misparCredit = res.find('input[name="misparCredit"]').val();
-                        poalimAsakimNew.varGlobal.ts = ts;
-                        poalimAsakimNew.varGlobal.u = u;
-                        poalimAsakimNew.varGlobal.dwx = dwx;
-                        poalimAsakimNew.varGlobal.tcfo = tcfo;
-                        poalimAsakimNew.varGlobal.qwrt = qwrt;
-                        poalimAsakimNew.varGlobal.tsfo = tsfo;
-                        poalimAsakimNew.varGlobal.mmx = mmx;
-                        poalimAsakimNew.varGlobal.dwxReq = dwxReq;
-                        poalimAsakimNew.varGlobal.dwxOp = dwxOp;
-                        poalimAsakimNew.varGlobal.YOM_ASAKIM_MF = YOM_ASAKIM_MF;
-                        poalimAsakimNew.varGlobal.sugCredit = sugCredit;
-                        poalimAsakimNew.varGlobal.misparCredit = misparCredit;
-
-
-                        var accDetalisArr = $(res).find('#allAcountsList option:selected script').text().split('new Acc(')[1].split(")")[0].split(",");
-                        var snifNum = accDetalisArr[1].replace(/\D/g, "");
-                        var accNum = accDetalisArr[2].replace(/\D/g, "");
-                        var AccountNumber = parseInt(accNum);
-                        var BranchNumber = parseInt(snifNum);
-
-                        var rowsTable = res.find('#mytable_body tr.TR_ROW_BANKTABLE');
-                        var len = rowsTable.length;
-                        if (len) {
-                            rowsTable.each(function (i, v) {
-                                var v = $(v);
-                                var CheckDescription = null,
-                                    CheckTotal = null,
-                                    CheckAccountNumber = null,
-                                    CheckBranchNumber = null,
-                                    CheckBankNumber = null,
-                                    CheckNumber = null,
-                                    DepositeDate = null,
-                                    DueDate = null;
-
-                                if ($(v).children('td').eq(0).length) {
-                                    CheckDescription = $(v).children('td').eq(0).text();
-                                }
-                                if ($(v).children('td').eq(1).length) {
-                                    CheckTotal = $(v).children('td').eq(1).text().replace(/,/g, '');
-                                }
-                                if ($(v).children('td').eq(2).length) {
-                                    CheckAccountNumber = $(v).children('td').eq(2).text();
-                                }
-                                if ($(v).children('td').eq(3).length) {
-                                    CheckBranchNumber = $(v).children('td').eq(3).text();
-                                }
-                                if ($(v).children('td').eq(4).length) {
-                                    CheckBankNumber = $(v).children('td').eq(4).text();
-                                }
-                                if ($(v).children('td').eq(5).length) {
-                                    CheckNumber = $(v).children('td').eq(5).text();
-                                }
-                                if ($(v).children('td').eq(6).length && $(v).children('td').eq(6).text() !== "") {
-                                    var DepositeDateText = $(v).children('td').eq(6).text().split("/");
-                                    DepositeDate = "20" + DepositeDateText[2].replace(/\D/g, "") + '' + DepositeDateText[1].replace(/\D/g, "") + '' + DepositeDateText[0].replace(/\D/g, "");
-                                }
-                                if ($(v).children('td').eq(8).length && $(v).children('td').eq(8).text() !== "") {
-                                    var DueDateText = $(v).children('td').eq(8).text().split("/");
-                                    DueDate = "20" + DueDateText[2].replace(/\D/g, "") + '' + DueDateText[1].replace(/\D/g, "") + '' + DueDateText[0].replace(/\D/g, "");
-                                }
-                                all.banks.generalVariables.allDataArrDueChecks.push({
-                                    "BankNumber": 12,
-                                    "TargetId": all.banks.generalVariables.AccountNumber,
-                                    "Token": all.banks.generalVariables.branchNumber,
-                                    "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
-                                    "ExporterId": all.banks.spiderConfig.spiderId,
-                                    "BranchNumber": BranchNumber,
-                                    "AccountNumber": AccountNumber,
-                                    "CheckDescription": CheckDescription,
-                                    "CheckTotal": CheckTotal,
-                                    "CheckAccountNumber": CheckAccountNumber,
-                                    "CheckBranchNumber": CheckBranchNumber,
-                                    "CheckBankNumber": CheckBankNumber,
-                                    "CheckNumber": CheckNumber,
-                                    "DepositeDate": DepositeDate,
-                                    "DueDate": DueDate
-                                })
-
-                                if (len == (i + 1)) {
-                                    all.banks.accounts.poalimAsakimNew.sendDueChecksCtrl();
-                                    res = null;
-                                }
-                            })
-                        } else {
-                            all.banks.accounts.poalimAsakimNew.sendDueChecksCtrl();
-                            res = null;
-                        }
-                    } catch (e) {
-                        all.banks.accounts.poalimAsakimNew.sendDueChecksCtrl();
-                        res = null;
-                    }
-                }
-            })
-            .fail(function (error, resErr, urlParam) {
-                all.banks.accounts.poalimAsakimNew.sendDueChecksCtrl();
-            });
-    }
-    poalimAsakimNew.loadStandingOrders = function () {
-        all.banks.generalVariables.allDataArrStandingOrders = [];
-        var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=auto&reqName=action&language=HE&transactionId=HoraotKevaAndDebitInst&subMenuName=DealsNew&ts=" + poalimAsakimNew.varGlobal.ts + "&tf=" + Math.random() + "&u=" + poalimAsakimNew.varGlobal.u + "&pSubMenu=DealsNew&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=" + poalimAsakimNew.varGlobal.dwx + "&wScr=1920&hScr=1080&tcfo=" + poalimAsakimNew.varGlobal.tcfo + "&mmx=" + poalimAsakimNew.varGlobal.mmx + "&qwrt=" + poalimAsakimNew.varGlobal.qwrt + "&dtcdb=0&menuTranName=HoraotKevaAndDebitInst";
-        all.banks.core.services.httpReq(url, 'GET', null, false, false)
-            .then(function (response, bbb, ccc) {
-                var expires = ccc.getResponseHeader("X-FRAME-OPTIONS");
-                if (expires == null) {
-
-                    poalimAsakimNew.setNewTime(function () {
-                        poalimAsakimNew.loadStandingOrders();
-                    });
-                } else {
-                    //all.banks.core.services.sendLogs(type, text);
-                    try {
-                        var res = all.banks.core.services.parseHtml(response);
-
-                        var ts = res.find('input[name="ts"]').val();
-                        var u = res.find('input[name="u"]').val();
-                        var dwx = res.find('input[name="dwx"]').val();
-                        var tcfo = res.find('input[name="tcfo"]').val();
-                        var qwrt = res.find('input[name="qwrt"]').val();
-                        var tsfo = res.find('input[name="tsfo"]').val();
-                        var mmx = res.find('input[name="mmx"]').val();
-                        var dwxReq = res.find('input[name="dwxReq"]').val();
-                        var dwxOp = res.find('input[name="dwxOp"]').val();
-                        var YOM_ASAKIM_MF = res.find('input[name="YOM_ASAKIM_MF"]').val();
-                        var sugCredit = res.find('input[name="sugCredit"]').val();
-                        var misparCredit = res.find('input[name="misparCredit"]').val();
-                        poalimAsakimNew.varGlobal.ts = ts;
-                        poalimAsakimNew.varGlobal.u = u;
-                        poalimAsakimNew.varGlobal.dwx = dwx;
-                        poalimAsakimNew.varGlobal.tcfo = tcfo;
-                        poalimAsakimNew.varGlobal.qwrt = qwrt;
-                        poalimAsakimNew.varGlobal.tsfo = tsfo;
-                        poalimAsakimNew.varGlobal.mmx = mmx;
-                        poalimAsakimNew.varGlobal.dwxReq = dwxReq;
-                        poalimAsakimNew.varGlobal.dwxOp = dwxOp;
-                        poalimAsakimNew.varGlobal.YOM_ASAKIM_MF = YOM_ASAKIM_MF;
-                        poalimAsakimNew.varGlobal.sugCredit = sugCredit;
-                        poalimAsakimNew.varGlobal.misparCredit = misparCredit;
-
-
-                        var accDetalisArr = $(res).find('#allAcountsList option:selected script').text().split('new Acc(')[1].split(")")[0].split(",");
-                        var snifNum = accDetalisArr[1].replace(/\D/g, "");
-                        var accNum = accDetalisArr[2].replace(/\D/g, "");
-                        var AccountNumber = parseInt(accNum);
-                        var BranchNumber = parseInt(snifNum);
-
-                        function reverse(s) {
-                            return s.split("").reverse().join("");
-                        }
-
-                        var rowsTable = res.find('#tbodyPaymentRights tr.TR_ROW_BANKTABLE');
-                        var len = rowsTable.length;
-                        if (len) {
-                            rowsTable.each(function (i, v) {
-                                var v = $(v);
-                                var OrderName = null,
-                                    OrderOpeningDate = null,
-                                    OrderLastDate = null,
-                                    OrderTotal = null,
-                                    OrderNumber = null,
-                                    Asmachta = null;
-
-                                if ($(v).children('td').eq(5).length && $(v).children('td').eq(5).text().replace(/\s/g, "") !== "") {
-                                    OrderName = reverse($(v).children('td').eq(5).text());
-                                }
-                                if ($(v).children('td').eq(2).length && $(v).children('td').eq(2).text().replace(/\s/g, "") !== "") {
-                                    var OrderLastDateVal = $(v).children('td').eq(2).text().split("/");
-                                    OrderLastDate = OrderLastDateVal[2].replace(/\D/g, "") + '' + OrderLastDateVal[1].replace(/\D/g, "") + '' + OrderLastDateVal[0].replace(/\D/g, "");
-                                }
-                                var rowNext = $(v).next().find("#WHITE_BANKTABLE tbody tr").eq(1).find("td");
-                                if (rowNext.length) {
-                                    var OrderOpeningDateVal = rowNext.eq(0).text().split("/");
-                                    OrderOpeningDate = OrderOpeningDateVal[2].replace(/\D/g, "") + '' + OrderOpeningDateVal[1].replace(/\D/g, "") + '' + OrderOpeningDateVal[0].replace(/\D/g, "");
-                                    if (rowNext.length == 2) {
-                                        OrderNumber = rowNext.eq(1).text().replace(/\D/g, "");
-                                    }
-                                    if (rowNext.length == 3) {
-                                        OrderNumber = rowNext.eq(2).text().replace(/\D/g, "");
-                                    }
-                                }
-                                if ($(v).children('td').eq(1).length && $(v).children('td').eq(1).text().replace(/\s/g, "") !== "") {
-                                    OrderTotal = poalimAsakimNew.returnClearSum($(v).children("td").eq(1).text());
-                                }
-                                all.banks.generalVariables.allDataArrStandingOrders.push({
-                                    "TargetId": all.banks.accountDetails.bank.targetId,
-                                    "Token": all.banks.accountDetails.bank.token,
-                                    "BankNumber": parseInt(all.banks.accountDetails.bank.BankNumber),
-                                    "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
-                                    "ExporterId": all.banks.spiderConfig.spiderId,
-                                    "AccountNumber": AccountNumber,
-                                    "BranchNumber": BranchNumber,
-                                    "OrderName": OrderName,
-                                    "OrderOpeningDate": OrderOpeningDate,
-                                    "OrderLastDate": OrderLastDate,
-                                    "OrderTotal": OrderTotal,
-                                    "OrderNumber": OrderNumber,
-                                    "Asmachta": null,
-                                    BankTransferNumber: null,
-                                    BranchTransferNumber: null,
-                                    AccountTransferNumber: null,
-                                    NamePayerTransfer: null,
-                                    Type: 2,
-                                });
-                                if (len == (i + 1)) {
-                                    //loadHoraotKeva();
-                                    all.banks.accounts.poalimAsakimNew.sendStandingOrdersCtrl();
-                                    res = null;
-                                }
-                            })
-                        } else {
-                            //loadHoraotKeva();
-                            all.banks.accounts.poalimAsakimNew.sendStandingOrdersCtrl();
-                            res = null;
-                        }
-
-                        function loadHoraotKeva() {
-                            var rowsTableHoraotKeva = res.find('#tbodyHoraotKeva tr.TR_ROW_BANKTABLE');
-                            var leng = rowsTableHoraotKeva.length;
-                            if (leng) {
-                                rowsTableHoraotKeva.each(function (i, v) {
-                                    var v = $(v);
-                                    var OrderName = null,
-                                        OrderOpeningDate = null,
-                                        OrderLastDate = null,
-                                        OrderTotal = null,
-                                        OrderNumber = null,
-                                        Asmachta = null;
-
-                                    if ($(v).children('td').eq(8).length) {
-                                        OrderName = reverse($(v).children('td').eq(8).text());
-                                    }
-
-                                    if ($(v).children('td').eq(1).length) {
-                                        OrderTotal = poalimAsakimNew.returnClearSum($(v).children("td").eq(1).text())
-                                    }
-                                    if ($(v).children('td').eq(9).length) {
-                                        OrderNumber = $(v).children('td').eq(9).text();
-                                    }
-                                    if ($(v).children('td').eq(4).length && $(v).children('td').eq(4).text().replace(/\s/g, "") !== "") {
-                                        Asmachta = $(v).children('td').eq(4).text();
-                                    }
-                                    all.banks.generalVariables.allDataArrStandingOrders.push({
-                                        "TargetId": all.banks.accountDetails.bank.targetId,
-                                        "Token": all.banks.accountDetails.bank.token,
-                                        "BankNumber": parseInt(all.banks.accountDetails.bank.BankNumber),
-                                        "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
-                                        "ExporterId": all.banks.spiderConfig.spiderId,
-                                        "AccountNumber": AccountNumber,
-                                        "BranchNumber": BranchNumber,
-                                        "OrderName": OrderName,
-                                        "OrderOpeningDate": OrderOpeningDate,
-                                        "OrderLastDate": OrderLastDate,
-                                        "OrderTotal": OrderTotal,
-                                        "OrderNumber": OrderNumber,
-                                        "Asmachta": Asmachta,
-                                        BankTransferNumber: null,
-                                        BranchTransferNumber: null,
-                                        AccountTransferNumber: null,
-                                        NamePayerTransfer: null,
-                                        Type: 2,
-                                    });
-                                    if (leng == (i + 1)) {
-                                        all.banks.accounts.poalimAsakimNew.sendStandingOrdersCtrl();
-                                        res = null;
-                                    }
-                                })
-                            } else {
-                                all.banks.accounts.poalimAsakimNew.sendStandingOrdersCtrl();
-                                res = null;
-                            }
-                        }
-                    } catch (err) {
-                        all.banks.accounts.poalimAsakimNew.sendStandingOrdersCtrl();
-                        res = null;
-                    }
-                }
-            })
-            .fail(function (error, resErr, urlParam) {
-                all.banks.accounts.poalimAsakimNew.sendStandingOrdersCtrl();
-            });
-    }
-
-    poalimAsakimNew.reverseComment = function (comment) {
-        if (comment == undefined) {
-            return "";
-        }
-        var textCom = comment.split(" ");
-        var text = [];
-        textCom.forEach(function (val) {
-            if (val.match(/\D/g) !== null && val.match(/[\u0590-\u05FF]/g) !== null) {
-                text.unshift(val.split("").reverse().join(""));
-            } else {
-                text.push(val);
-            }
-        });
-        return text.join(" ");
-    };
-    poalimAsakimNew.loadMatah = function () {
-        all.banks.generalVariables.allDataArr = {
-            "ExporterId": all.banks.spiderConfig.spiderId,
-            "BankData": [{
-                "TargetId": all.banks.spiderConfig.spiderId,
-                "Token": all.banks.generalVariables.branchNumber,
-                "BankNumber": all.banks.accountDetails.bank.BankNumber,
-                "ExtractDate": all.banks.accountDetails.bank.ExtractDate,
-                "Account": []
-            }]
-        };
-        var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=auto&reqName=action&language=HE&transactionId=ItrotMatach&subMenuName=ForeinCurrency&ts=" + poalimAsakimNew.varGlobal.ts + "&tf=" + Math.random() + "&u=" + poalimAsakimNew.varGlobal.u + "&pSubMenu=Shekel&fromSubMenu=ForeinCurrency&bxx=912&nsv=y&dwx=" + poalimAsakimNew.varGlobal.dwx + "&wScr=1920&hScr=1080&tcfo=" + poalimAsakimNew.varGlobal.tcfo + "&mmx=" + poalimAsakimNew.varGlobal.mmx + "&qwrt=" + poalimAsakimNew.varGlobal.qwrt + "&dtcdb=0&menuTranName=ItrotMatach";
-        all.banks.core.services.httpReq(url, 'GET', null, false, false)
-            .then(function (data, bbb, ccc) {
-                var expires = ccc.getResponseHeader("X-FRAME-OPTIONS");
-                if (expires == null) {
-
-                    poalimAsakimNew.setNewTime(function () {
-                        poalimAsakimNew.loadMatah();
-                    });
-                } else {
-                    try {
-                        var data = all.banks.core.services.parseHtml(data);
-                        var ts = data.find('input[name="ts"]').val();
-                        var u = data.find('input[name="u"]').val();
-                        var dwx = data.find('input[name="dwx"]').val();
-                        var tcfo = data.find('input[name="tcfo"]').val();
-                        var qwrt = data.find('input[name="qwrt"]').val();
-                        var tsfo = data.find('input[name="tsfo"]').val();
-                        var mmx = data.find('input[name="mmx"]').val();
-                        var dwxReq = data.find('input[name="dwxReq"]').val();
-                        var dwxOp = data.find('input[name="dwxOp"]').val();
-                        var YOM_ASAKIM_MF = data.find('input[name="YOM_ASAKIM_MF"]').val();
-                        poalimAsakimNew.varGlobal.ts = ts;
-                        poalimAsakimNew.varGlobal.u = u;
-                        poalimAsakimNew.varGlobal.dwx = dwx;
-                        poalimAsakimNew.varGlobal.tcfo = tcfo;
-                        poalimAsakimNew.varGlobal.qwrt = qwrt;
-                        poalimAsakimNew.varGlobal.tsfo = tsfo;
-                        poalimAsakimNew.varGlobal.mmx = mmx;
-                        poalimAsakimNew.varGlobal.dwxReq = dwxReq;
-                        poalimAsakimNew.varGlobal.dwxOp = dwxOp;
-                        poalimAsakimNew.varGlobal.YOM_ASAKIM_MF = YOM_ASAKIM_MF;
-                        var req = {
-                            'input_fromAgg': $(data).find('input[name="input_fromAgg"]').val(),
-                            'reqName': $(data).find('input[name="reqName"]').val(),
-                            'transactionId': "MatachTran",
-                            'menuParam': $(data).find('input[name="menuParam"]').val(),
-                            'PGcode': $(data).find('input[name="PGcode"]').val(),
-                            'step': $(data).find('input[name="step"]').val(),
-                            'u': poalimAsakimNew.varGlobal.u,
-                            'tcfo': poalimAsakimNew.varGlobal.tcfo,
-                            'tsfo': poalimAsakimNew.varGlobal.tsfo,
-                            'mmx': poalimAsakimNew.varGlobal.mmx,
-                            "fromSubMenu": "ForeinCurrency",
-                            'qwrt': poalimAsakimNew.varGlobal.qwrt,
-                            'mpux': "",
-                            'targetView': "",
-                            'dwx': poalimAsakimNew.varGlobal.dwx,
-                            'dwxReq': poalimAsakimNew.varGlobal.dwxReq,
-                            'dwxOp': poalimAsakimNew.varGlobal.dwxOp,
-                            'doc_key': $(data).find('input[name="doc_key"]').val(),
-                            'callerTid': $(data).find('input[name="callerTid"]').val(),
-                            'WTcomeFrom': $(data).find('input[name="WTcomeFrom"]').val(),
-                            'YOM_ASAKIM_MF': poalimAsakimNew.varGlobal.YOM_ASAKIM_MF,
-                            'accountIndex': all.banks.accounts.poalimAsakimNew.indDDAll(all.banks.accounts.poalimAsakimNew.vddVal.BANK_SNIF_ACCOUNT_KEY),
-                            'txtToDate': all.banks.accounts.poalimAsakimNew.vddVal.datebacksleshToMatah,
-                            'txtFromDate': all.banks.accounts.poalimAsakimNew.vddVal.datebacksleshMatah,
-                            'changeDates': 'yes',
-                            'dontClearTrInfo': 'yes',
-                            'currencySelected': '9999',
-                            'actionSelected': '9999',
-                            'SelectSugCurrency': '9999',
-                            'SelectSugAction': '9999'
-                        };
-                        all.banks.core.services.httpReq("https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc", 'POST', req, true, false)
-                            .then(function (res, bbb, ccc) {
-                                var expires = ccc.getResponseHeader("X-FRAME-OPTIONS");
-                                if (expires == null) {
-
-                                    poalimAsakimNew.setNewTime(function () {
-                                        poalimAsakimNew.loadMatah();
-                                    });
-                                } else {
-                                    var res = all.banks.core.services.parseHtml(res);
-                                    var ts = res.find('input[name="ts"]').val();
-                                    var u = res.find('input[name="u"]').val();
-                                    var dwx = res.find('input[name="dwx"]').val();
-                                    var tcfo = res.find('input[name="tcfo"]').val();
-                                    var qwrt = res.find('input[name="qwrt"]').val();
-                                    var tsfo = res.find('input[name="tsfo"]').val();
-                                    var mmx = res.find('input[name="mmx"]').val();
-                                    var dwxReq = res.find('input[name="dwxReq"]').val();
-                                    var dwxOp = res.find('input[name="dwxOp"]').val();
-                                    var YOM_ASAKIM_MF = res.find('input[name="YOM_ASAKIM_MF"]').val();
-                                    poalimAsakimNew.varGlobal.ts = ts;
-                                    poalimAsakimNew.varGlobal.u = u;
-                                    poalimAsakimNew.varGlobal.dwx = dwx;
-                                    poalimAsakimNew.varGlobal.tcfo = tcfo;
-                                    poalimAsakimNew.varGlobal.qwrt = qwrt;
-                                    poalimAsakimNew.varGlobal.tsfo = tsfo;
-                                    poalimAsakimNew.varGlobal.mmx = mmx;
-                                    poalimAsakimNew.varGlobal.dwxReq = dwxReq;
-                                    poalimAsakimNew.varGlobal.dwxOp = dwxOp;
-                                    poalimAsakimNew.varGlobal.YOM_ASAKIM_MF = YOM_ASAKIM_MF;
-                                    var url = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?ctfw=auto&reqName=action&language=HE&transactionId=ItrotMatach&subMenuName=ForeinCurrency&ts=" + poalimAsakimNew.varGlobal.ts + "&tf=" + Math.random() + "&u=" + poalimAsakimNew.varGlobal.u + "&pSubMenu=Shekel&fromSubMenu=ForeinCurrency&bxx=912&nsv=y&dwx=" + poalimAsakimNew.varGlobal.dwx + "&wScr=1920&hScr=1080&tcfo=" + poalimAsakimNew.varGlobal.tcfo + "&mmx=" + poalimAsakimNew.varGlobal.mmx + "&qwrt=" + poalimAsakimNew.varGlobal.qwrt + "&dtcdb=0&menuTranName=ItrotMatach";
-                                    all.banks.core.services.httpReq(url, 'GET', null, false, false)
-                                        .then(function (data, bbb, ccc) {
-                                            var expires = ccc.getResponseHeader("X-FRAME-OPTIONS");
-                                            if (expires == null) {
-
-                                                poalimAsakimNew.setNewTime(function () {
-                                                    poalimAsakimNew.loadMatah();
-                                                });
-                                            } else {
-                                                var data = all.banks.core.services.parseHtml(data);
-                                                var ts = data.find('input[name="ts"]').val();
-                                                var u = data.find('input[name="u"]').val();
-                                                var dwx = data.find('input[name="dwx"]').val();
-                                                var tcfo = data.find('input[name="tcfo"]').val();
-                                                var qwrt = data.find('input[name="qwrt"]').val();
-                                                var tsfo = data.find('input[name="tsfo"]').val();
-                                                var mmx = data.find('input[name="mmx"]').val();
-                                                var dwxReq = data.find('input[name="dwxReq"]').val();
-                                                var dwxOp = data.find('input[name="dwxOp"]').val();
-                                                var YOM_ASAKIM_MF = data.find('input[name="YOM_ASAKIM_MF"]').val();
-
-                                                poalimAsakimNew.varGlobal.ts = ts;
-                                                poalimAsakimNew.varGlobal.u = u;
-                                                poalimAsakimNew.varGlobal.dwx = dwx;
-                                                poalimAsakimNew.varGlobal.tcfo = tcfo;
-                                                poalimAsakimNew.varGlobal.qwrt = qwrt;
-                                                poalimAsakimNew.varGlobal.tsfo = tsfo;
-                                                poalimAsakimNew.varGlobal.mmx = mmx;
-                                                poalimAsakimNew.varGlobal.dwxReq = dwxReq;
-                                                poalimAsakimNew.varGlobal.dwxOp = dwxOp;
-                                                poalimAsakimNew.varGlobal.YOM_ASAKIM_MF = YOM_ASAKIM_MF;
-                                                var rowsTypes = data.find("#someDataDivPrint #tableToggleRow tr.TR_ROW_BANKTABLE");
-                                                if (rowsTypes.length) {
-
-                                                    var accDetalisArr = res.find('#allAcountsList option:selected script').text().split('new Acc(')[1].split(")")[0].split(",");
-                                                    var snifNum = accDetalisArr[1].replace(/\D/g, "");
-                                                    var accNum = accDetalisArr[2].replace(/\D/g, "");
-                                                    var AccountNumber = parseInt(accNum);
-                                                    var BranchNumber = parseInt(snifNum);
-
-                                                    $(rowsTypes).each(function (ind, val) {
-                                                        var tr = $(val);
-                                                        if (tr.attr("style") == undefined && tr.attr("name") == undefined) {
-                                                            var rowTextTitle = poalimAsakimNew.reverseComment(tr.children("td").eq(5).text()).replace(/\s+/g, " ");
-                                                            var acc = {
-                                                                'BankNumber': 12,
-                                                                'AccountNumber': AccountNumber,
-                                                                'BranchNumber': BranchNumber,
-                                                                'Balance': poalimAsakimNew.returnClearSum(tr.children("td").eq(2).text()),//0,
-                                                                'AccountCredit': null,
-                                                                "BankAccountTypeId": tr.children("td").eq(6).text().replace(/\D/g, ""),
-                                                                "CurrencyId": all.banks.core.services.getTypeCurrencyAll(rowTextTitle, true)
-                                                            };
-                                                            all.banks.generalVariables.allDataArr.BankData[0].Account.push(acc);
-                                                            all.banks.generalVariables.allDataArr.BankData[0].Account[all.banks.generalVariables.allDataArr.BankData[0].Account.length - 1].DataRow = [];
-                                                        }
-                                                        if (ind + 1 == rowsTypes.length) {
-                                                            getRowsmatah(res);
-                                                        }
-                                                    });
-                                                } else {
-                                                    getRowsmatah(res);
-                                                }
-                                            }
-                                        })
-                                        .fail(function (error, resErr) {
-                                            getRowsmatah(res);
-                                        });
-
-                                    function getRowsmatah(res) {
-                                        function reverse(s) {
-                                            return s.split("").reverse().join("");
-                                        }
-
-                                        var accDetalisArr = res.find('#allAcountsList option:selected script').text().split('new Acc(')[1].split(")")[0].split(",");
-                                        var snifNum = accDetalisArr[1].replace(/\D/g, "");
-                                        var accNum = accDetalisArr[2].replace(/\D/g, "");
-                                        var AccountNumber = parseInt(accNum);
-                                        var BranchNumber = parseInt(snifNum);
-
-                                        var rowsOfTable = res.find("#someDataDivPrint").children("table.arial12NoBold").find('algoritem[takepartfromcash="TITLE_HEB"]').next().find("tr");
-                                        if (rowsOfTable.length) {
-                                            var title = {};
-                                            var accToAddTo = undefined;
-                                            rowsOfTable.each(function (i, v) {
-                                                try {
-                                                    var val = $(v);
-                                                    if (val.hasClass("TR_TOTAL") && !val.find("today_msg").length) {
-                                                        title.isDaily = 0;
-                                                        var paramSplit = val.text().split(":");
-                                                        if (paramSplit.length == 3) {
-                                                            var idxParam = 2;
-                                                        } else if (paramSplit.length == 2) {
-                                                            var idxParam = 1;
-                                                        }
-                                                        var rowTextTitle = poalimAsakimNew.reverseComment(paramSplit[idxParam]).replace(/\s+/g, " ");
-                                                        title.bankaccounttypeId = rowTextTitle.replace(/\D/g, "");
-                                                        title.currencyid = all.banks.core.services.getTypeCurrencyAll(rowTextTitle, true);
-
-                                                        accToAddTo = all.banks.generalVariables.allDataArr.BankData[0].Account
-                                                            .find(function (prevCreatedAcc) {
-                                                                return prevCreatedAcc.BankAccountTypeId === title.bankaccounttypeId
-                                                                    && prevCreatedAcc.CurrencyId === title.currencyid
-                                                                    && prevCreatedAcc.AccountNumber === AccountNumber;
-                                                            });
-                                                        if (!accToAddTo) {
-                                                            var acc = {
-                                                                'BankNumber': 12,
-                                                                'AccountNumber': AccountNumber,
-                                                                'BranchNumber': BranchNumber,
-                                                                'Balance': 0,
-                                                                'AccountCredit': null,
-                                                                "BankAccountTypeId": title.bankaccounttypeId,
-                                                                "CurrencyId": title.currencyid,
-                                                                "DataRow": []
-                                                            };
-                                                            all.banks.generalVariables.allDataArr.BankData[0].Account.push(acc);
-//                                                                                                    all.banks.generalVariables.allDataArr.BankData[0].Account[all.banks.generalVariables.allDataArr.BankData[0].Account.length - 1].DataRow = [];
-                                                            accToAddTo = acc;
-                                                        }
-                                                    }
-                                                    if (val.hasClass("TR_TOTAL") && val.find("today_msg").length) {
-                                                        title.isDaily = 1;
-                                                    }
-                                                    if (val.hasClass("TR_ROW_BANKTABLE") && val.attr("name") == undefined) {
-                                                        var tdTextDesc = val.children("td").eq(6).find("table tr td");
-                                                        var transDesc = poalimAsakimNew.reverseComment(tdTextDesc.eq(0).text()) + " " + tdTextDesc.eq(2).text();
-                                                        var desc = val.children("td").eq(0).text();
-                                                        if (desc.replace(/\s+/g, "") !== "") {
-                                                            transDesc += " " + poalimAsakimNew.reverseComment(desc.replace(/\s+/g, " "));
-                                                        }
-                                                        var valueDate = val.children("td").eq(7).text();
-                                                        var sum = null;
-                                                        var sumZehut = val.children("td").eq(3).text().replace(/\s/g, "");
-                                                        var sumHova = val.children("td").eq(4).text().replace(/\s/g, "");
-                                                        var transactionType = null;
-                                                        if (sumZehut == '') {
-                                                            sum = poalimAsakimNew.returnClearSum(sumHova);
-                                                            transactionType = '0';
-                                                        } else {
-                                                            sum = poalimAsakimNew.returnClearSum(sumZehut);
-                                                            transactionType = '1';
-                                                        }
-                                                        var balance = poalimAsakimNew.returnClearSum(val.children("td").eq(2).text());
-                                                        var asmachta = val.children("td").eq(1).text().replace(/\s/g, "");
-
-                                                        var dataRows = accToAddTo ? accToAddTo.DataRow
-                                                            : all.banks.generalVariables.allDataArr.BankData[0].Account[all.banks.generalVariables.allDataArr.BankData[0].Account.length - 1].DataRow;
-                                                        dataRows.push({
-                                                            "Asmachta": asmachta.replace(/\D/g, ""),
-                                                            "TransDesc": transDesc.replace(/\s/g, " ").trim(),
-                                                            "ValueDate": valueDate.split("/")[0] + "/" + valueDate.split("/")[1] + "/20" + valueDate.split("/")[2],
-                                                            "TransactionType": transactionType,
-                                                            "TransTotal": poalimAsakimNew.returnClearSum(sum),
-                                                            "Balance": balance,
-                                                            "IsDaily": title.isDaily,
-                                                            "imgs": null
-                                                        });
-                                                    }
-                                                } catch (e) {
-                                                    writeLog('Failed to process matah row: ' + e);
-                                                }
-                                                if (i + 1 == rowsOfTable.length) {
-                                                    all.banks.accounts.poalimAsakimNew.sendMatahCtrl();
-                                                    res = null;
-                                                    rowsOfTable = null;
-                                                }
-                                            })
-                                        } else {
-                                            all.banks.accounts.poalimAsakimNew.sendMatahCtrl();
-                                            res = null;
-                                            rowsOfTable = null;
-                                        }
-                                    }
-                                }
-                            })
-                            .fail(function (error, resErr) {
-                                all.banks.accounts.poalimAsakimNew.sendMatahCtrl();
-                            })
-                    } catch (e) {
-                        all.banks.accounts.poalimAsakimNew.sendMatahCtrl();
-                    }
-                }
-
-            })
-            .fail(function (error, resErr) {
-                all.banks.accounts.poalimAsakimNew.sendMatahCtrl();
-            })
-    }
-    poalimAsakimNew.loadMatahNew = async function () {
-        all.banks.generalVariables.allDataArr = {
-            "ExporterId": all.banks.spiderConfig.spiderId,
-            "BankData": [{
-                "TargetId": all.banks.spiderConfig.spiderId,
-                "Token": all.banks.generalVariables.branchNumber,
-                "BankNumber": 12,
-                "ExtractDate": all.banks.accountDetails.bank.ExtractDate,
-                "Account": []
-            }]
-        };
-        var accDetalis = all.banks.accounts.poalimAsakimNew.vddVal.BANK_SNIF_ACCOUNT_KEY;
-        var arrAcc = accDetalis.split('-');
-
-        try {
-            var urlXhr = "https://biz2.bankhapoalim.co.il/ServerServices/foreign-currency/transactions?accountId=12-" + arrAcc[1] + '-' + arrAcc[0]
-                + "&type=business&lang=he";
-            const data = await all.banks.core.services.httpReq(urlXhr, 'GET', null, false, false);
-//                            .then(poalimAsakimNew.failIfRedirectedToError);
-
-            if (data && data.messageCode == undefined && data.balancesAndLimitsDataList !== undefined && data.balancesAndLimitsDataList.length && data.currencyCode && data.currencyCode.values && data.currencyCode.values.length) {
-                const currencyCodeList = data.currencyCode.values.map(it => it.currencyCode).join(',');
-                const detailedAccountTypeCodeList = data.detailedAccountTypeCode.values.map(it => it.detailedAccountTypeCode).join(',');
-
-                var urls = "https://biz2.bankhapoalim.co.il/ServerServices/foreign-currency/transactions?accountId=12-" + arrAcc[1] + '-' + arrAcc[0]
-                    + "&currencyCodeList=" + currencyCodeList + "&detailedAccountTypeCodeList=" + detailedAccountTypeCodeList
-                    + "&retrievalEndDate=" + all.banks.accounts.poalimAsakimNew.vddVal.datebacksleshToMatah
-                    + "&retrievalStartDate=" + all.banks.accounts.poalimAsakimNew.vddVal.datebacksleshMatah
-                    + "&view=details&type=business&lang=he";
-                try {
-                    const res = await all.banks.core.services.httpReq(urls, 'GET', null, false, false);
-//                                        .then(poalimAsakimNew.failIfRedirectedToError);
-
-                    if (res && res.balancesAndLimitsDataList) {
-                        for (let indx = 0; indx < res.balancesAndLimitsDataList.length; indx++) {
-                            let va = res.balancesAndLimitsDataList[indx];
-                            let currentBalance = data.balancesAndLimitsDataList.find(accIt => accIt.currencyCode === va.currencyCode);
-                            if (currentBalance) {
-                                currentBalance = currentBalance.currentBalance
-                            } else {
-                                currentBalance = null;
-                            }
-                            all.banks.generalVariables.allDataArr.BankData[0].Account.push({
-                                'BankNumber': 12,
-                                "BranchNumber": parseInt(arrAcc[1]),
-                                "AccountNumber": parseInt(arrAcc[0]),
-                                'Balance': currentBalance,
-                                'AccountCredit': null,
-                                "BankAccountTypeId": va.detailedAccountTypeCode,
-                                "CurrencyId": all.banks.core.services.getTypeCurrencyAll(va.currencySwiftCode, true),
-                                "DataRow": []
-                            });
-                            if (!va.transactions || !va.transactions.length) {
-                                continue;
-                            }
-
-                            for (let trIdx = 0; trIdx < va.transactions.length; trIdx++) {
-                                await processTransaction(va.transactions[trIdx]);
-                            }
-                        }
-                    }
-
-                } catch (e) {
-                    writeLog('Foreign transactions processing failed for ' + arrAcc[1] + '-' + arrAcc[0]
-                        + '(' + acc.currencyCode + ', ' + acc.detailedAccountTypeCode + '): ' + e);
-                }
-
-
-                async function processTransaction(v1) {
-                    const row = {
-                        "Asmachta": poalimAsakimNew.retrieveAsmachta(v1), // v1.referenceNumber,
-                        "TransDesc": v1.activityDescription + (v1.comment ? (' ' + v1.comment) : ''),
-                        "ValueDate": all.banks.core.services.convertDateAll(poalimAsakimNew.convertDateLocal(v1.executingDate)),
-                        "TransactionType": (v1.eventActivityTypeCode === 1) ? "1" : "0",
-                        "TransTotal": v1.eventAmount,
-                        "Balance": v1.currentBalance,
-                        "IsDaily": (v1.transactionType === "TODAY") ? "1" : "0",
-                        "imgs": null,
-                        "DepositeTransferData": null
-                    };
-                    acc["DataRow"].push(row);
-
-                    if (v1.eventDetails) {
-                        if (v1.originalSystemId === 390) {
-                            // TEMPORARILY disable such requests as they guaranteed to fail
-                            return;
-
-                            try {
-                                const resp = await all.banks.core.services.httpReq(
-                                    "https://biz2.bankhapoalim.co.il/ServerServices/capital-market/securities/" + v1.eventDetails
-                                    + "?accountId=12-" + arrAcc[1] + '-' + arrAcc[0] + "&view=quote&lang=he",
-                                    'GET', null, false, false);
-                                if (resp && resp.securityQuoteData) {
-                                    row["TransDesc"] = row["TransDesc"] + " " + resp.securityQuoteData.securityName;
-                                }
-                            } catch (e) {
-                                writeLog(`Transaction ${v1.referenceNumber} details load failed`);
-                            }
-
-                        } else {
-                            row["TransDesc"] = row["TransDesc"] + " " + v1.eventDetails;
-                        }
-                    }
-                }
-            }
-
-            all.banks.accounts.poalimAsakimNew.sendMatahCtrl();
-
-        } catch (exc) {
-            // all.banks.core.services.errorLog(exc);
-            writeLog('Foreign transactions processing failed for ' + arrAcc[1] + '-' + arrAcc[0] + exc);
-        }
-
-    }
     poalimAsakimNew.logOut = function () {
         var urls = "https://" + poalimAsakimNew.newAccPath + ".bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=Logoff&language=HE&logOffParam=999&u=i&pSubMenu=Shekel&fromSubMenu=Shekel&bxx=912&nsv=y&dwx=" + poalimAsakimNew.varGlobal.dwx + "&wScr=1920&hScr=1080&tcfo=" + poalimAsakimNew.varGlobal.tcfo + "&mmx=" + poalimAsakimNew.varGlobal.mmx + "&qwrt=" + poalimAsakimNew.varGlobal.qwrt + "&dtcdb=0&menuTranName=HomePagePoalim";
         all.banks.core.services.httpReq(urls, 'GET', null, false, false)
@@ -10452,39 +11404,6 @@ all.banks.accounts.poalimAsakimNew = function () {
                 $('#filecontainerlogin').attr('src', '');
                 myEmitterLogs(4);
             });
-    };
-    poalimAsakimNew.logOutNew = function () {
-        all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=preLogoff&lang=he", 'GET', null, false, false)
-            .then(function (res) {
-                all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/cgi-bin/poalwwwc?reqName=Logoff&id=0", 'GET', null, false, false)
-                    .then(function (res) {
-                        $('#filecontainerlogin').attr('src', '');
-                        clearProxy().then(() => {
-                            myEmitterLogs(4);
-                        });
-                    })
-                    .fail(function (error, resErr, urlParam) {
-                        $('#filecontainerlogin').attr('src', '');
-                        clearProxy().then(() => {
-                            myEmitterLogs(4);
-                        });
-                    });
-            })
-            .fail(function (error, resErr, urlParam) {
-                $('#filecontainerlogin').attr('src', '');
-                clearProxy().then(() => {
-                    myEmitterLogs(4);
-                });
-            });
-//		all.banks.core.services.httpReq("https://biz2.bankhapoalim.co.il/biz-portalserver/logoff?portalName=biz", 'GET', null, false, false)
-//		.then(function (res) {
-//			$('#filecontainerlogin').attr('src', '');
-//			myEmitterLogs(4);
-//		})
-//		.fail(function (error, resErr, urlParam) {
-//			$('#filecontainerlogin').attr('src', '');
-//			myEmitterLogs(4);
-//		});
     };
     poalimAsakimNew.reportAccountNotAvailableAndProceed = function () {
         if (poalimAsakimNew.lastFailedAccNum !== poalimAsakimNew.accNum && !poalimAsakimNew.haltAndWaitForReload) {
@@ -10658,6 +11577,7 @@ all.banks.accounts.poalimAsakimNew = function () {
                                                         if (valCheck.url !== undefined) {
                                                             poalimAsakimNew.getImageAndSend(valCheck.url, valCheck.ImageNameKey).then(function (res) {
                                                                 if (res === false) {
+                                                                    //debugger
                                                                     valCheck.ImageNameKey = "x";
                                                                 }
                                                                 delete valCheck.url;
@@ -10882,9 +11802,9 @@ all.banks.accounts.poalimAsakimNew = function () {
         const dfd = jQuery.Deferred();
         if (responseURL
             && ["getLogonPageIski", "Error", "exit.html"].some(urlPart => responseURL.includes(urlPart))) {
-            let err = new Error("Redirected to " + responseURL + " perhaps because of another otp session started somewhere. Terminating with error.");
+            let err = ("Redirected to " + responseURL + " perhaps because of another otp session started somewhere. Terminating with error.");
             if (responseURL === 'https://misc.poalim-site.co.il/Error_Pages/5/New/ErrorNew_5.html') {
-                err = new Error("Redirected to " + responseURL + " perhaps because the bank announces that the service is temporarily unavailable.");
+                err = ("Redirected to " + responseURL + " perhaps because the bank announces that the service is temporarily unavailable.");
             }
             all.banks.core.services.errorLog(err);
             poalimAsakimNew.haltAndWaitForReload = true;

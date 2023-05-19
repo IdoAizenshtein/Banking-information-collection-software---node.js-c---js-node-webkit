@@ -248,9 +248,13 @@ all.banks.core.main = function () {
 
     main.changeIpV4 = function (change) {
         return new Promise((resolve, reject) => {
-            // setProxy().then(() => {
-            //     resolve(true);
-            // })
+            // if(window.navigator.platform.indexOf('Win') === -1 && (all.banks.accountDetails.deleted_account_ids.length && all.banks.accountDetails.deleted_account_ids[0].toString() === '111111111')){
+            //     setProxy().then(() => {
+            //         resolve(true);
+            //     })
+            // }else{
+            //
+            // }
             if (all.banks.spiderConfig.changeIp !== undefined) {
                 if (all.banks.spiderConfig.changeIp === true) {
                     monitorVpn.checkVpnTime(change, function isFinishVpn(res) {
@@ -312,8 +316,10 @@ all.banks.core.main = function () {
 
                 function login() {
                     // all.banks.accounts.IND_CHECKS_TO_S3 = 1;
+                    // console.log('SendToAmazon: ', all.banks.accounts.IND_CHECKS_TO_S3 === 1)
+                    myEmitterLogs('SendToAmazon: ' + (all.banks.accounts.IND_CHECKS_TO_S3 === 1));
                     all.banks.spiderConfig.sendToServerAWS = 'etl.bizibox.biz';
-                    if (all.banks.spiderConfig.sendToServer.includes('adm-pre.bizibox.biz') || all.banks.spiderConfig.sendToServer.includes('secure-pre.bizibox.biz')) {
+                    if (all.banks.spiderConfig.sendToServer.includes('adm-pre.bizibox.biz') || all.banks.spiderConfig.sendToServer.includes('secure-dev.bizibox.biz')) {
                         all.banks.spiderConfig.sendToServerAWS = 'dev-etl.bizibox.biz';
                     } else if (all.banks.spiderConfig.sendToServer.includes('aws-secure-stg.bizibox.biz') || all.banks.spiderConfig.sendToServer.includes('aws-stg-adm.bizibox.biz')) {
                         all.banks.spiderConfig.sendToServerAWS = 'etl-stage.bizibox.biz';
@@ -333,13 +339,16 @@ all.banks.core.main = function () {
                 }
 
                 function nextRunData() {
+                    if (parseFloat(all.banks.accountDetails.bank.BankNumber) === 57) {
+                        all.banks.accountDetails.bank.BankNumber = 157;
+                    }
                     switch (parseFloat(all.banks.accountDetails.bank.BankNumber)) {
                         case 31:
                         case 46:
                         case 52:
                         case 126:
                         case 14:
-                            main.changeIpV4(false).then(function () {
+                            main.changeIpV4('israel').then(function () {
                                 all.banks.accounts.fibi.login();
                             });
                             break;
@@ -354,87 +363,6 @@ all.banks.core.main = function () {
 
                         case 12:
                             if (all.banks.generalVariables.isPoalimAsakim) {
-                                if ((all.banks.accounts.poalimAsakimNew.numberOfOperations !== 0 && all.banks.spiderConfig.runPoalimAsakimParallel)
-                                    ||
-                                    (all.banks.accountDetails.deleted_account_ids.length && all.banks.accountDetails.deleted_account_ids[0].toString() === '123')
-                                ) {
-                                    all.banks.accounts.poalimAsakimNew.numberOfOperations = parseFloat(all.banks.spiderConfig.poalimBizThreadNum);
-                                    all.banks.accounts.poalimAsakimNew.numberOfOperationsChecks = parseFloat(all.banks.spiderConfig.poalimBizCheckThreadNum);
-                                    all.banks.accounts.poalimAsakimNew.numOfAccForRenewLogin = parseFloat(all.banks.spiderConfig.numOfAccForRenewLogin);
-                                    all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginOsh = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginOsh);
-                                    all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginCards = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginCards);
-                                    all.banks.accounts.poalimAsakimNew.numberOfOperationsCards = parseFloat(all.banks.spiderConfig.numberOfOperationsCards);
-                                    all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginMatah = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginMatah);
-                                    all.banks.accounts.poalimAsakimNew.numberOfOperationsMatah = parseFloat(all.banks.spiderConfig.numberOfOperationsMatah);
-                                    all.banks.accounts.poalimAsakimNew.numberOfOperationsNilvim = parseFloat(all.banks.spiderConfig.numberOfOperationsNilvim);
-                                    all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginNilvim = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginNilvim);
-                                    // main.changeIpV4(false).then(function () {
-                                    //     all.banks.accounts.poalimAsakimNew.login();
-                                    // });
-                                    if (window.navigator.platform.indexOf('Win') === -1) {
-                                        writeLog('---Set Proxy----');
-                                        setProxy().then((suc) => {
-                                            if(suc){
-                                                all.banks.accounts.poalimAsakimNew.intervalXHRKeepProxySession = setInterval(() => {
-                                                    request({
-                                                        uri: "https://icanhazip.com",
-                                                        family: 4,
-                                                        method: 'GET',
-                                                        timeout: 40000000,
-                                                        'proxy': ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225'),
-                                                        headers: {
-                                                            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36'
-                                                        }
-                                                    }, function (error, response, body) {
-                                                        if (body && typeof body === 'string') {
-                                                            writeLog('---ipAfterServerTestProxy prevent 30 sec: ' + body.replace(/\s/g, ""));
-                                                        }
-                                                    })
-                                                }, 15000)
-                                                all.banks.accounts.poalimAsakimNew.login();
-                                            }else{
-                                                main.changeIpV4(false).then(function () {
-                                                    window.all.banks.vpnConnected = true;
-                                                    all.banks.accounts.poalimAsakimNew.login();
-                                                });
-                                            }
-                                        })
-                                    } else {
-                                        all.banks.accounts.poalimAsakimNew.login();
-                                    }
-
-                                } else {
-                                    if (window.navigator.platform.indexOf('Win') === -1) {
-                                        writeLog('---Set Proxy----');
-                                        setProxy().then((suc) => {
-                                            if(suc){
-                                                all.banks.accounts.poalimAsakim.login();
-                                            }else{
-                                                main.changeIpV4(false).then(function () {
-                                                    window.all.banks.vpnConnected = true;
-                                                    all.banks.accounts.poalimAsakim.login();
-                                                });
-                                            }
-                                        })
-                                    } else {
-                                        all.banks.accounts.poalimAsakim.login();
-                                    }
-                                    // main.changeIpV4(false).then(function () {
-                                    //     all.banks.accounts.poalimAsakim.login();
-                                    // });
-                                }
-                            } else {
-                                all.banks.accounts.hapoalim.login();
-                            }
-                            break;
-
-                        case 122:
-                        case 123:
-                        case 124:
-                            if ((all.banks.accounts.poalimAsakimNew.numberOfOperations !== 0 && all.banks.spiderConfig.runPoalimAsakimParallel)
-                                ||
-                                (all.banks.accountDetails.deleted_account_ids.length && all.banks.accountDetails.deleted_account_ids[0].toString() === '123')
-                            ) {
                                 all.banks.accounts.poalimAsakimNew.numberOfOperations = parseFloat(all.banks.spiderConfig.poalimBizThreadNum);
                                 all.banks.accounts.poalimAsakimNew.numberOfOperationsChecks = parseFloat(all.banks.spiderConfig.poalimBizCheckThreadNum);
                                 all.banks.accounts.poalimAsakimNew.numOfAccForRenewLogin = parseFloat(all.banks.spiderConfig.numOfAccForRenewLogin);
@@ -445,61 +373,248 @@ all.banks.core.main = function () {
                                 all.banks.accounts.poalimAsakimNew.numberOfOperationsMatah = parseFloat(all.banks.spiderConfig.numberOfOperationsMatah);
                                 all.banks.accounts.poalimAsakimNew.numberOfOperationsNilvim = parseFloat(all.banks.spiderConfig.numberOfOperationsNilvim);
                                 all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginNilvim = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginNilvim);
-                                // main.changeIpV4(false).then(function () {
-                                //     all.banks.accounts.poalimAsakimNew.login();
-                                // });
-                                if (window.navigator.platform.indexOf('Win') === -1) {
-                                    writeLog('---Set Proxy----');
-                                    setProxy().then((suc) => {
-                                        if(suc){
-                                            all.banks.accounts.poalimAsakimNew.intervalXHRKeepProxySession = setInterval(() => {
-                                                request({
-                                                    uri: "https://icanhazip.com",
-                                                    family: 4,
-                                                    method: 'GET',
-                                                    timeout: 40000000,
-                                                    'proxy': ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225'),
-                                                    headers: {
-                                                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36'
-                                                    }
-                                                }, function (error, response, body) {
-                                                    if (body && typeof body === 'string') {
-                                                        writeLog('---ipAfterServerTestProxy prevent 30 sec: ' + body.replace(/\s/g, ""));
-                                                    }
-                                                })
-                                            }, 15000)
-                                            all.banks.accounts.poalimAsakimNew.login();
-                                        }else{
-                                            main.changeIpV4(false).then(function () {
-                                                window.all.banks.vpnConnected = true;
-                                                all.banks.accounts.poalimAsakimNew.login();
-                                            });
-                                        }
-
-                                    })
-                                } else {
+                                main.changeIpV4(false).then(function () {
+                                    window.all.banks.vpnConnected = true;
                                     all.banks.accounts.poalimAsakimNew.login();
-                                }
+                                });
+                                // if ((all.banks.accounts.poalimAsakimNew.numberOfOperations !== 0 && all.banks.spiderConfig.runPoalimAsakimParallel)
+                                //     ||
+                                //     (all.banks.accountDetails.deleted_account_ids.length && all.banks.accountDetails.deleted_account_ids[0].toString() === '123')
+                                // ) {
+                                //
+                                //     // if (window.navigator.platform.indexOf('Win') === -1 && !all.banks.openBankPage) {
+                                //     //     $.get("https://lumtest.com/myip")
+                                //     //         .done(function (ipAddrress) {
+                                //     //             ipAddrress = ipAddrress.replace(/\s/g, "");
+                                //     //             request({
+                                //     //                 uri: 'https://brightdata.com/api/zone/whitelist',
+                                //     //                 method: "POST",
+                                //     //                 body: {'zone': 'residential', 'ip': ipAddrress},
+                                //     //                 json: true,
+                                //     //                 headers: {'Authorization': 'Bearer 959bcce2-a1e9-466c-b4b8-eb1d06cdcf4f'}
+                                //     //             }, (error, response, data) => {
+                                //     //                 request({
+                                //     //                     uri: "https://lumtest.com/myip",
+                                //     //                     family: 4,
+                                //     //                     method: 'GET',
+                                //     //                     timeout: 40000000,
+                                //     //                     'proxy': 'http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225',
+                                //     //                     headers: {
+                                //     //                         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36'
+                                //     //                     }
+                                //     //                 }, function (error, response, body) {
+                                //     //                     if (body && typeof body === 'string') {
+                                //     //                         all.banks.accounts.poalimAsakimNew.IpAddress = body.replace(/\s/g, "")
+                                //     //                         all.banks.accounts.poalimAsakimNew.login();
+                                //     //                     }
+                                //     //                 })
+                                //     //                 all.banks.accounts.poalimAsakimNew.intervalXHRKeepProxySession = setInterval(() => {
+                                //     //                     request({
+                                //     //                         uri: "https://lumtest.com/myip",
+                                //     //                         family: 4,
+                                //     //                         method: 'GET',
+                                //     //                         timeout: 40000000,
+                                //     //                         proxy: 'http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225',
+                                //     //                         headers: {
+                                //     //                             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36'
+                                //     //                         }
+                                //     //                     }, function (error, response, body) {
+                                //     //                         if (body && typeof body === 'string') {
+                                //     //                             if (all.banks.accounts.poalimAsakimNew.IpAddress !== body.replace(/\s/g, "")) {
+                                //     //                                 myEmitterLogs(9, '---Proxy ip changed!! now is:' + body.replace(/\s/g, "") + ' --- before:' + all.banks.accounts.poalimAsakimNew.IpAddress);
+                                //     //                             }
+                                //     //                             writeLog('---ipAfterServerTestProxy prevent 30 sec: ' + body.replace(/\s/g, ""));
+                                //     //                         }
+                                //     //                     })
+                                //     //                 }, 5000)
+                                //     //             });
+                                //     //         })
+                                //     //     // writeLog('---Set Proxy----');
+                                //     //     // setProxy().then((suc) => {
+                                //     //     //     if(suc){
+                                //     //     //         all.banks.accounts.poalimAsakimNew.intervalXHRKeepProxySession = setInterval(() => {
+                                //     //     //             request({
+                                //     //     //                 uri: "https://icanhazip.com",
+                                //     //     //                 family: 4,
+                                //     //     //                 method: 'GET',
+                                //     //     //                 timeout: 40000000,
+                                //     //     //                 'proxy': ('http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225'),
+                                //     //     //                 headers: {
+                                //     //     //                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36'
+                                //     //     //                 }
+                                //     //     //             }, function (error, response, body) {
+                                //     //     //                 if (body && typeof body === 'string') {
+                                //     //     //                     writeLog('---ipAfterServerTestProxy prevent 30 sec: ' + body.replace(/\s/g, ""));
+                                //     //     //                 }
+                                //     //     //             })
+                                //     //     //         }, 15000)
+                                //     //     //         all.banks.accounts.poalimAsakimNew.login();
+                                //     //     //     }else{
+                                //     //     //         main.changeIpV4(false).then(function () {
+                                //     //     //             window.all.banks.vpnConnected = true;
+                                //     //     //             all.banks.accounts.poalimAsakimNew.login();
+                                //     //     //         });
+                                //     //     //     }
+                                //     //     // })
+                                //     // } else {
+                                //     //     all.banks.accounts.poalimAsakimNew.login();
+                                //     // }
+                                //
+                                // } else {
+                                //     // if (window.navigator.platform.indexOf('Win') === -1 && !all.banks.openBankPage) {
+                                //     //     writeLog('---Set Proxy----');
+                                //     //     setProxy().then((suc) => {
+                                //     //         if (suc) {
+                                //     //             all.banks.accounts.poalimAsakim.login();
+                                //     //         } else {
+                                //     //             main.changeIpV4(false).then(function () {
+                                //     //                 window.all.banks.vpnConnected = true;
+                                //     //                 all.banks.accounts.poalimAsakim.login();
+                                //     //             });
+                                //     //         }
+                                //     //     })
+                                //     // } else {
+                                //     //     all.banks.accounts.poalimAsakim.login();
+                                //     // }
+                                //
+                                //     main.changeIpV4(false).then(function () {
+                                //         window.all.banks.vpnConnected = true;
+                                //         all.banks.accounts.poalimAsakim.login();
+                                //     });
+                                //     // main.changeIpV4(false).then(function () {
+                                //     //     all.banks.accounts.poalimAsakim.login();
+                                //     // });
+                                // }
                             } else {
-                                if (window.navigator.platform.indexOf('Win') === -1) {
-                                    writeLog('---Set Proxy----');
-                                    setProxy().then((suc) => {
-                                        if(suc){
-                                            all.banks.accounts.poalimAsakim.login();
-                                        }else{
-                                            main.changeIpV4(false).then(function () {
-                                                window.all.banks.vpnConnected = true;
-                                                all.banks.accounts.poalimAsakim.login();
-                                            });
-                                        }
-                                    })
-                                } else {
-                                    all.banks.accounts.poalimAsakim.login();
-                                }
-                                // main.changeIpV4(false).then(function () {
-                                //     all.banks.accounts.poalimAsakim.login();
-                                // });
+                                all.banks.accounts.hapoalim.login();
                             }
+                            break;
+
+                        case 122:
+                        case 123:
+                        case 124:
+                            all.banks.accounts.poalimAsakimNew.numberOfOperations = parseFloat(all.banks.spiderConfig.poalimBizThreadNum);
+                            all.banks.accounts.poalimAsakimNew.numberOfOperationsChecks = parseFloat(all.banks.spiderConfig.poalimBizCheckThreadNum);
+                            all.banks.accounts.poalimAsakimNew.numOfAccForRenewLogin = parseFloat(all.banks.spiderConfig.numOfAccForRenewLogin);
+                            all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginOsh = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginOsh);
+                            all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginCards = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginCards);
+                            all.banks.accounts.poalimAsakimNew.numberOfOperationsCards = parseFloat(all.banks.spiderConfig.numberOfOperationsCards);
+                            all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginMatah = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginMatah);
+                            all.banks.accounts.poalimAsakimNew.numberOfOperationsMatah = parseFloat(all.banks.spiderConfig.numberOfOperationsMatah);
+                            all.banks.accounts.poalimAsakimNew.numberOfOperationsNilvim = parseFloat(all.banks.spiderConfig.numberOfOperationsNilvim);
+                            all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginNilvim = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginNilvim);
+                            main.changeIpV4(false).then(function () {
+                                window.all.banks.vpnConnected = true;
+                                all.banks.accounts.poalimAsakimNew.login();
+                            });
+                            // if ((all.banks.accounts.poalimAsakimNew.numberOfOperations !== 0 && all.banks.spiderConfig.runPoalimAsakimParallel)
+                            //     ||
+                            //     (all.banks.accountDetails.deleted_account_ids.length && all.banks.accountDetails.deleted_account_ids[0].toString() === '123')
+                            // ) {
+                            //     all.banks.accounts.poalimAsakimNew.numberOfOperations = parseFloat(all.banks.spiderConfig.poalimBizThreadNum);
+                            //     all.banks.accounts.poalimAsakimNew.numberOfOperationsChecks = parseFloat(all.banks.spiderConfig.poalimBizCheckThreadNum);
+                            //     all.banks.accounts.poalimAsakimNew.numOfAccForRenewLogin = parseFloat(all.banks.spiderConfig.numOfAccForRenewLogin);
+                            //     all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginOsh = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginOsh);
+                            //     all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginCards = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginCards);
+                            //     all.banks.accounts.poalimAsakimNew.numberOfOperationsCards = parseFloat(all.banks.spiderConfig.numberOfOperationsCards);
+                            //     all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginMatah = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginMatah);
+                            //     all.banks.accounts.poalimAsakimNew.numberOfOperationsMatah = parseFloat(all.banks.spiderConfig.numberOfOperationsMatah);
+                            //     all.banks.accounts.poalimAsakimNew.numberOfOperationsNilvim = parseFloat(all.banks.spiderConfig.numberOfOperationsNilvim);
+                            //     all.banks.accounts.poalimAsakimNew.numOfAccForRenewLoginNilvim = parseFloat(all.banks.spiderConfig.numOfAccForRenewLoginNilvim);
+                            //     // main.changeIpV4(false).then(function () {
+                            //     //     all.banks.accounts.poalimAsakimNew.login();
+                            //     // });
+                            //
+                            //     main.changeIpV4(false).then(function () {
+                            //         window.all.banks.vpnConnected = true;
+                            //         all.banks.accounts.poalimAsakimNew.login();
+                            //     });
+                            //     // if (window.navigator.platform.indexOf('Win') === -1 && !all.banks.openBankPage) {
+                            //     //     $.get("https://lumtest.com/myip")
+                            //     //         .done(function (ipAddrress) {
+                            //     //             ipAddrress = ipAddrress.replace(/\s/g, "");
+                            //     //             request({
+                            //     //                 uri: 'https://brightdata.com/api/zone/whitelist',
+                            //     //                 method: "POST",
+                            //     //                 body: {'zone': 'residential', 'ip': ipAddrress},
+                            //     //                 json: true,
+                            //     //                 headers: {'Authorization': 'Bearer 959bcce2-a1e9-466c-b4b8-eb1d06cdcf4f'}
+                            //     //             }, (error, response, data) => {
+                            //     //                 request({
+                            //     //                     uri: "https://lumtest.com/myip",
+                            //     //                     family: 4,
+                            //     //                     method: 'GET',
+                            //     //                     timeout: 40000000,
+                            //     //                     'proxy': 'http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225',
+                            //     //                     headers: {
+                            //     //                         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36'
+                            //     //                     }
+                            //     //                 }, function (error, response, body) {
+                            //     //                     if (body && typeof body === 'string') {
+                            //     //                         all.banks.accounts.poalimAsakimNew.IpAddress = body.replace(/\s/g, "")
+                            //     //                         all.banks.accounts.poalimAsakimNew.login();
+                            //     //                     }
+                            //     //                 })
+                            //     //                 all.banks.accounts.poalimAsakimNew.intervalXHRKeepProxySession = setInterval(() => {
+                            //     //                     request({
+                            //     //                         uri: "https://lumtest.com/myip",
+                            //     //                         family: 4,
+                            //     //                         method: 'GET',
+                            //     //                         timeout: 40000000,
+                            //     //                         'proxy': 'http://brd-customer-hl_c3a2c65e-zone-residential-route_err-pass_dyn-country-il-session-glob' + all.banks.accountDetails.bank.token.replace(/-/g, '') + ':h0mi0yvib3to@zproxy.lum-superproxy.io:22225',
+                            //     //                         headers: {
+                            //     //                             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.98 Safari/537.36'
+                            //     //                         }
+                            //     //                     }, function (error, response, body) {
+                            //     //                         if (body && typeof body === 'string') {
+                            //     //                             if (all.banks.accounts.poalimAsakimNew.IpAddress !== body.replace(/\s/g, "")) {
+                            //     //                                 myEmitterLogs(9, '---Proxy ip changed!! now is:' + body.replace(/\s/g, "") + ' --- before:' + all.banks.accounts.poalimAsakimNew.IpAddress);
+                            //     //                             }
+                            //     //                             writeLog('---ipAfterServerTestProxy prevent 30 sec: ' + body.replace(/\s/g, ""));
+                            //     //                         }
+                            //     //                     })
+                            //     //                 }, 5000)
+                            //     //             });
+                            //     //         })
+                            //     //     // writeLog('---Set Proxy----');
+                            //     //     // setProxy().then((suc) => {
+                            //     //     //     if(suc){
+                            //     //     //
+                            //     //     //     }else{
+                            //     //     //         main.changeIpV4(false).then(function () {
+                            //     //     //             window.all.banks.vpnConnected = true;
+                            //     //     //             all.banks.accounts.poalimAsakimNew.login();
+                            //     //     //         });
+                            //     //     //     }
+                            //     //     //
+                            //     //     // })
+                            //     // } else {
+                            //     //     all.banks.accounts.poalimAsakimNew.login();
+                            //     // }
+                            // } else {
+                            //     main.changeIpV4(false).then(function () {
+                            //         window.all.banks.vpnConnected = true;
+                            //         all.banks.accounts.poalimAsakim.login();
+                            //     });
+                            //     // if (window.navigator.platform.indexOf('Win') === -1 && !all.banks.openBankPage) {
+                            //     //     writeLog('---Set Proxy----');
+                            //     //     setProxy().then((suc) => {
+                            //     //         if (suc) {
+                            //     //             all.banks.accounts.poalimAsakim.login();
+                            //     //         } else {
+                            //     //             main.changeIpV4(false).then(function () {
+                            //     //                 window.all.banks.vpnConnected = true;
+                            //     //                 all.banks.accounts.poalimAsakim.login();
+                            //     //             });
+                            //     //         }
+                            //     //     })
+                            //     // } else {
+                            //     //     all.banks.accounts.poalimAsakim.login();
+                            //     // }
+                            //     // main.changeIpV4(false).then(function () {
+                            //     //     all.banks.accounts.poalimAsakim.login();
+                            //     // });
+                            // }
                             break;
 
                         case 10:
@@ -516,26 +631,26 @@ all.banks.core.main = function () {
                             break;
 
                         case 54:
-                            if (window.navigator.platform.indexOf('Win') === -1) {
-                                $.get("https://icanhazip.com")
-                                    .done(function (ipAddrress) {
-                                        ipAddrress = ipAddrress.replace(/\s/g, "");
-                                        require('request')({
-                                            uri: 'https://brightdata.com/api/zone/whitelist',
-                                            method: "POST",
-                                            body: {'zone': 'residential', 'ip': ipAddrress},
-                                            json: true,
-                                            headers: {'Authorization': 'Bearer 959bcce2-a1e9-466c-b4b8-eb1d06cdcf4f'}
-                                        }, (error, response, data) => {
-                                            all.banks.accounts.bankjerusalem.login();
-                                        });
-                                    })
-                            } else {
-                                all.banks.accounts.bankjerusalem.login();
-                            }
-                            // main.changeIpV4('israel').then(function () {
+                            // if (window.navigator.platform.indexOf('Win') === -1) {
+                            //     $.get("https://lumtest.com/myip")
+                            //         .done(function (ipAddrress) {
+                            //             ipAddrress = ipAddrress.replace(/\s/g, "");
+                            //             require('request')({
+                            //                 uri: 'https://brightdata.com/api/zone/whitelist',
+                            //                 method: "POST",
+                            //                 body: {'zone': 'residential', 'ip': ipAddrress},
+                            //                 json: true,
+                            //                 headers: {'Authorization': 'Bearer 959bcce2-a1e9-466c-b4b8-eb1d06cdcf4f'}
+                            //             }, (error, response, data) => {
+                            //                 all.banks.accounts.bankjerusalem.login();
+                            //             });
+                            //         })
+                            // } else {
                             //     all.banks.accounts.bankjerusalem.login();
-                            // });
+                            // }
+                            main.changeIpV4('israel').then(function () {
+                                all.banks.accounts.bankjerusalem.login();
+                            });
                             break;
 
                         case 20:
@@ -544,13 +659,13 @@ all.banks.core.main = function () {
                             });
                             break;
 
-                        case 57:
                         case 58:
                             main.changeIpV4(false).then(function () {
                                 all.banks.accounts.discountAsakim.login();
                             });
                             break;
 
+                        case 57:
                         case 157:
                         case 158:
                             main.changeIpV4(false).then(function () {
@@ -573,7 +688,9 @@ all.banks.core.main = function () {
                             break;
 
                         case 21:
-                            all.banks.accounts.visaCardAll.login();
+                            main.changeIpV4(false).then(function () {
+                                all.banks.accounts.visaCardAll.login();
+                            });
                             break;
 
                         case 81:
@@ -604,6 +721,9 @@ all.banks.core.main = function () {
 
                         case 90:
                         case 190:
+                            // main.changeIpV4('israel').then(function () {
+                            //     all.banks.accounts.gama.process();
+                            // });
                             writeLog('---Set Proxy----');
                             setProxy().then(() => {
                                 all.banks.accounts.gama.process();

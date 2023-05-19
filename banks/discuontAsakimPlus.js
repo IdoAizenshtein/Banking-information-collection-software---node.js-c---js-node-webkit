@@ -4610,7 +4610,9 @@ all.banks.accounts.discountAsakimPlusNew = function () {
             case 158:
                 discountAsakimPlusNew.typeBank = 'd';
                 break;
+
             case 157:
+            case 57:
                 discountAsakimPlusNew.typeBank = 'm';
                 break;
         }
@@ -4620,9 +4622,8 @@ all.banks.accounts.discountAsakimPlusNew = function () {
         let response = await all.banks.core.services.httpReq('https://start.telebank.co.il/LoginPages/Logon?multilang=he&t=S&pagekey=Home&bank=' + discountAsakimPlusNew.typeBank, 'GET', null, false, false);
         const dataRes = all.banks.core.services.parseHtml(response);
 
-        await all.banks.core.services.httpReq("https://start.telebank.co.il/apollo/core/templates/lobby/masterPage.html?t=S&bank=" + discountAsakimPlusNew.typeBank.toUpperCase() + "&u1=false&multilang=he",
-            'GET', null, false, false);
-        await all.banks.core.services.httpReq("https://start.telebank.co.il/apollo/core/templates/lobby/masterPage.html#/LOGIN_PAGE_SME", 'GET', null, false, false);
+        await all.banks.core.services.httpReq("https://start.telebank.co.il/wps/myportal/" + discountAsakimPlusNew.typeBank.toUpperCase() + "-H-PAsakimPlus/Home", 'GET', null, false, false);
+        // await all.banks.core.services.httpReq("https://start.telebank.co.il/apollo/core/templates/lobby/masterPage.html#/LOGIN_PAGE_SME", 'GET', null, false, false);
 
 //        if (all.banks.accountDetails.bank.autoCode.length !== 6) {
 //            let askForCode = true;
@@ -4651,7 +4652,7 @@ all.banks.accounts.discountAsakimPlusNew = function () {
             try {
 //                await all.banks.core.services.httpReq("https://start.telebank.co.il/apollo/core/templates/default/masterPage.html", 'GET', null, false, false);
 //                all.banks.core.services.openBankPage("https://start.telebank.co.il/apollo/core/templates/default/masterPage.html#/MY_ACCOUNT_HOMEPAGE");
-                all.banks.core.services.openBankPage("https://start.telebank.co.il/apollo/core/templates/SME/masterPage.html#/MY_ACCOUNT_HOMEPAGE");
+                all.banks.core.services.openBankPage("https://start.telebank.co.il/apollo/business/#/MY_ACCOUNT_HOMEPAGE");
             } catch (exc) {
                 console.error(exc);
                 writeLog(exc);
@@ -4832,14 +4833,17 @@ all.banks.accounts.discountAsakimPlusNew = function () {
                     'GET', null, false, false);
                 if (infoAndBalance && infoAndBalance.AccountInfoAndBalance) {
                     // all.banks.accountDetails.dateFrom = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - all.banks.accountDetails.days);
-                    if (all.banks.accountDetails.days > 364) {
-                        const fixedDateFrom = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - 364);
-                        writeLog('>>> Fixed processing days number (< 365). New date from: '
-                            + dateAsDDMMYYYYArray(fixedDateFrom).join('/') + ' <<<');
-                        dateFromYYYYMMDD = dateAsDDMMYYYYArray(fixedDateFrom).reverse().join('');
-                    } else {
-                        dateFromYYYYMMDD = dateAsDDMMYYYYArray(all.banks.accountDetails.dateFrom).reverse().join('');
-                    }
+                    // if (all.banks.accountDetails.days > 364) {
+                    //     const arrayDatesNum = Math.ceil(all.banks.accountDetails.days / 364);
+                    //     const arrayDates =
+                    //     const fixedDateFrom = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - all.banks.accountDetails.days);
+                    //     writeLog('>>> Fixed processing days number (< 365). New date from: '
+                    //         + dateAsDDMMYYYYArray(fixedDateFrom).join('/') + ' <<<');
+                    //     dateFromYYYYMMDD = dateAsDDMMYYYYArray(fixedDateFrom).reverse().join('');
+                    //     dateToYYYYMMDD =new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - all.banks.accountDetails.days);
+                    // } else {
+                    //     dateFromYYYYMMDD = dateAsDDMMYYYYArray(all.banks.accountDetails.dateFrom).reverse().join('');
+                    // }
                     correctBalanceRetryAttempt = 0;
 
                     const processingAccount = {
@@ -4850,8 +4854,24 @@ all.banks.accounts.discountAsakimPlusNew = function () {
                         'AccountCredit': infoAndBalance.AccountInfoAndBalance.TotalAccountLimit //infoAndBalance.AccountInfoAndBalance.AccountLimit,
                     };
                     all.banks.generalVariables.allDataArr.BankData[0].Account.push(processingAccount);
-                    processingAccount['DataRow'] = await processOshTransactions();
-
+                    const arrDates = [];
+                    const splitDates = Math.ceil(all.banks.accountDetails.days / 364);
+                    for (let i = 0; i < splitDates; i++){
+                        let fixedDateFrom = i > 0 ?
+                            new Date(arrDates[i-1].dateTo.getFullYear(), arrDates[i-1].dateTo.getMonth(), (arrDates[i-1].dateTo.getDate() + 1)):
+                            new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate() - all.banks.accountDetails.days);
+                        let dateTo = new Date(fixedDateFrom.getFullYear(), fixedDateFrom.getMonth(), fixedDateFrom.getDate() + 364);
+                        if(dateTo.getTime() > new Date().getTime()){
+                            dateTo = new Date();
+                        }
+                        arrDates.push({
+                            dateFrom: fixedDateFrom,
+                            dateTo: dateTo
+                        })
+                        dateFromYYYYMMDD = dateAsDDMMYYYYArray(fixedDateFrom).reverse().join('');
+                        dateToYYYYMMDD = dateAsDDMMYYYYArray(dateTo).reverse().join('');
+                        processingAccount['DataRow'] = await processOshTransactions();
+                    }
                 } else if (!infoAndBalance || infoAndBalance.Error) {
                     myEmitterLogs(37, infoAndBalance && infoAndBalance.Error ? JSON.stringify(infoAndBalance.Error) : ""); //acc not available
                 }
@@ -4903,20 +4923,17 @@ all.banks.accounts.discountAsakimPlusNew = function () {
                 if (transactions && transactions.CurrentAccountLastTransactions) {
                     if (Array.isArray(transactions.CurrentAccountLastTransactions.OperationEntry)
                         && transactions.CurrentAccountLastTransactions.OperationEntry.length
-                        && toDateIsToday && correctBalanceRetryAttempt < maxCorrectBalanceRetries
                         && transactions.CurrentAccountLastTransactions.OperationEntry[transactions.CurrentAccountLastTransactions.OperationEntry.length - 1].BalanceAfterOperation
-                        !== transactions.CurrentAccountLastTransactions.CurrentAccountInfo.AccountBalance
-                        && (all.banks.accountDetails.days + correctBalanceRetryAttempt) < 364) {
-                        const fixedDateFrom = new Date(
-                            new Date().getFullYear(),
-                            new Date().getMonth(),
-                            new Date().getDate() - (all.banks.accountDetails.days + correctBalanceRetryAttempt));
-                        dateFromYYYYMMDD = dateAsDDMMYYYYArray(fixedDateFrom).reverse().join('');
-                        writeLog("period [" + dateFromYYYYMMDD + " - " + dateToYYYYMMDD + "]:"
-                            + " Expecting latest transaction balance to be " + transactions.CurrentAccountLastTransactions.CurrentAccountInfo.AccountBalance
-                            + ", but got " + transactions.CurrentAccountLastTransactions.OperationEntry[transactions.CurrentAccountLastTransactions.OperationEntry.length - 1].BalanceAfterOperation);
-
-                        return await processOshTransactions();
+                        !== transactions.CurrentAccountLastTransactions.CurrentAccountInfo.AccountBalance) {
+                        // const fixedDateFrom = new Date(
+                        //     new Date().getFullYear(),
+                        //     new Date().getMonth(),
+                        //     new Date().getDate() - (all.banks.accountDetails.days + correctBalanceRetryAttempt));
+                        // dateFromYYYYMMDD = dateAsDDMMYYYYArray(fixedDateFrom).reverse().join('');
+                        // writeLog("period [" + dateFromYYYYMMDD + " - " + dateToYYYYMMDD + "]:"
+                        //     + " Expecting latest transaction balance to be " + transactions.CurrentAccountLastTransactions.CurrentAccountInfo.AccountBalance
+                        //     + ", but got " + transactions.CurrentAccountLastTransactions.OperationEntry[transactions.CurrentAccountLastTransactions.OperationEntry.length - 1].BalanceAfterOperation);
+                        // return await processOshTransactions();
                     }
 
                     const salariesByUrn = await getSalaries();

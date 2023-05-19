@@ -8,7 +8,6 @@ all.banks.core.services = function () {
 //		return services.xhr;
 //	};
 
-
     services.uuidv4 = function () {
         return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
             (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
@@ -364,6 +363,9 @@ all.banks.core.services = function () {
                     params.contentType = false;
                     params.cache = false;
                 }
+                // if (url.indexOf("dataload/upload-check-images") > 0) {
+                //     params.headers.Accept = 'text/plain';
+                // }
             }
 
             if (headers) {
@@ -402,6 +404,11 @@ all.banks.core.services = function () {
                 function sendXhrAjax() {
                     $.ajax(params)
                         .done(function (response, state, status) {
+                            if (params.url.includes('spider-account-details')) {
+                                dfd.resolve(response, state, status, xhr.responseURL);
+                                return;
+                            }
+
                             if (url.indexOf('biz2.bankhapoalim.co.il') !== -1 && all.banks.accounts.poalimAsakim.active && xhr.responseURL && xhr.responseURL.includes('ErrorNew_6')) {
                                 // debugger
                                 // myEmitterLogs(302);
@@ -509,8 +516,12 @@ all.banks.core.services = function () {
                             }
                         })
                         .fail(function (error, resErr, xhr) {
-                            if (url.indexOf('biz2.bankhapoalim.co.il') !== -1) {
-                                writeLog('Error!!! Req: ' + url + ' status: ' + error.status);
+                            if (params.url.includes('spider-account-details')) {
+
+                            } else {
+                                if (url.indexOf('biz2.bankhapoalim.co.il') !== -1) {
+                                    writeLog('Error!!! Req: ' + url + ' status: ' + error.status);
+                                }
                             }
                             if (error.status == 406) {
                                 console.log('406')
@@ -712,6 +723,37 @@ all.banks.core.services = function () {
             if (all.banks.spiderConfig.sendToServerApi !== all.banks.spiderConfig.sendToServer) {
                 pathJson = "json/";
             }
+            if (data.BankData && Array.isArray(data.BankData) && data.BankData.length) {
+                if (data.BankData[0].Account && Array.isArray(data.BankData[0].Account) && data.BankData[0].Account.length) {
+                    try {
+                        const reportAccDataLoadParams = {
+                            "token": data.BankData[0].Token,
+                            "accountkey_tab": data.BankData[0].Account.map((itAcc) => {
+                                return data.IsMatah ? {
+                                    "bankId": itAcc.BankNumber,
+                                    "bankSnifId": itAcc.BranchNumber,
+                                    "bankAccountId": itAcc.AccountNumber,
+                                    "currency_id": itAcc.CurrencyId,
+                                    "bank_account_type_id": itAcc.BankAccountTypeId
+                                } : {
+                                    "bankId": itAcc.BankNumber,
+                                    "bankSnifId": itAcc.BranchNumber,
+                                    "bankAccountId": itAcc.AccountNumber
+                                }
+                            })
+                        }
+                        all.banks.core.services.httpReq(all.banks.spiderConfig.sendToServerApi + "/dataload/" + pathJson + "spider-account-details", 'POST', reportAccDataLoadParams, false, true)
+                            .then(function (response) {
+
+                            })
+                            .fail(function (error) {
+
+                            })
+                    } catch (err) {
+                        console.log(err)
+                    }
+                }
+            }
             all.banks.core.services.httpReq(all.banks.spiderConfig.sendToServerApi + "/dataload/" + pathJson + "banks/result", 'POST', data, false, true)
                 .then(function (response) {
                     exportJson.writeFileWithFolder('./Output/' + all.banks.accountDetails.bank.token + isMatah + new Date().getFullYear() + '_' + (new Date().getMonth() + 1) + '_' + new Date().getDate() + '_' + new Date().getHours() + '_' + new Date().getMinutes() + '_' + new Date().getSeconds() + '_' + new Date().getMilliseconds() + '.json', data, {spaces: 4}, function (err) {
@@ -789,16 +831,22 @@ all.banks.core.services = function () {
                         numberLoopError = 0;
                         dfd.resolve(response);
                     } else {
-                        if (((!response) || (response && (response.statusCode === 500 || response.statusCode === 502 || response.statusCode === 406 || response.statusCode === 504))) && numberLoopError < 6) {
-                            myEmitterLogs(26, "dataload/banks/result, status: " + error.status + "errorText: " + error.responseText);
-                            runSender();
-                        } else {
-                            exportJson.writeFileWithFolder('./Output/' + all.banks.accountDetails.bank.token + isMatah + '_Error_' + new Date().getFullYear() + '_' + (new Date().getMonth() + 1) + '_' + new Date().getDate() + '_' + new Date().getHours() + '_' + new Date().getMinutes() + '_' + new Date().getSeconds() + '_' + new Date().getMilliseconds() + '.json', data, {spaces: 4}, function (err) {
-                                if (err) {
-                                    console.log('Error writing file');
-                                }
-                            });
-                            myEmitterLogs(26, "dataload/banks/result, status: " + error.status + "errorText: " + error.responseText);
+                        try {
+                            if (((!response) || (response && (response.statusCode === 500 || response.statusCode === 502 || response.statusCode === 406 || response.statusCode === 504))) && numberLoopError < 6) {
+                                myEmitterLogs(26, "dataload/banks/result, status: " + response.statusCode + "errorText: " + error.responseText);
+                                runSender();
+                            } else {
+                                exportJson.writeFileWithFolder('./Output/' + all.banks.accountDetails.bank.token + isMatah + '_Error_' + new Date().getFullYear() + '_' + (new Date().getMonth() + 1) + '_' + new Date().getDate() + '_' + new Date().getHours() + '_' + new Date().getMinutes() + '_' + new Date().getSeconds() + '_' + new Date().getMilliseconds() + '.json', data, {spaces: 4}, function (err) {
+                                    if (err) {
+                                        console.log('Error writing file');
+                                    }
+                                });
+                                myEmitterLogs(26, "dataload/banks/result");
+                                numberLoopError = 0;
+                                dfd.resolve(error);
+                            }
+                        } catch (e) {
+                            myEmitterLogs(26, "dataload/banks/result");
                             numberLoopError = 0;
                             dfd.resolve(error);
                         }
@@ -882,6 +930,45 @@ all.banks.core.services = function () {
 
                 })
                 .fail(function (error) {
+                    if (error.status === 200 && error.statusText === 'parsererror' && error.responseText) {
+                        let response = error.responseText;
+                        const blob = data.formData.get(data.params.imagenamekey);
+                        blob.text().then(text => {
+                            if (!text.includes('data:image/')) {
+                                text = "data:image/jpeg;base64," + text;
+                            }
+                            fetch(text)
+                                .then(res => res.blob())
+                                .then(blob => {
+                                    const file = new File([blob], data.params.imagenamekey, {
+                                        type: 'image/jpeg',
+                                        lastModified: new Date().getTime()
+                                    });
+                                    file['src'] = URL.createObjectURL(file);
+                                    all.banks.core.services.httpReq(response, 'PUT', file, false, false, true, {
+                                        'Content-Type': 'image/jpeg'
+                                    }, false, true)
+                                        .then(function (response) {
+                                            all.banks.core.services.numberLoopError = 0;
+                                            dfd.resolve(response);
+                                        })
+                                        .fail(function (error) {
+                                            if ((error.status == 500 || error.status == 502 || error.status == 406 || error.status == 504) && all.banks.core.services.numberLoopError < 6) {
+                                                myEmitterLogs(26, "dataload/cheques/images, status: " + error.status + "errorText: " + error.responseText);
+                                                dfd.reject('discard');
+                                            } else {
+                                                myEmitterLogs(26, "dataload/cheques/images, status: " + error.status + "errorText: " + error.responseText);
+                                                all.banks.core.services.numberLoopError = 0;
+                                                dfd.resolve("error");
+                                            }
+                                        });
+                                })
+                        });
+                    } else {
+                        myEmitterLogs(26, "https://" + all.banks.spiderConfig.sendToServerAWS + "/rest/api/v1/dataload/upload-check-images, status: " + error.status + "errorText: " + error.responseText);
+                        all.banks.core.services.numberLoopError = 0;
+                        dfd.resolve("error");
+                    }
                     // all.banks.core.services.httpReq('https://api.bizibox.biz/rest/api/v1/dataload/upload-check-images', 'POST', data.params, false, true)
                     //     .then(function (response) {
                     //         all.banks.core.services.httpReq(response, 'PUT', data.formData, false, false, true, {
@@ -906,9 +993,7 @@ all.banks.core.services = function () {
                     //         all.banks.core.services.numberLoopError = 0;
                     //         dfd.resolve("error");
                     //     })
-                    myEmitterLogs(26, "https://" + all.banks.spiderConfig.sendToServerAWS + "/rest/api/v1/dataload/upload-check-images, status: " + error.status + "errorText: " + error.responseText);
-                    all.banks.core.services.numberLoopError = 0;
-                    dfd.resolve("error");
+
                 })
         } else {
             all.banks.core.services.httpReq(all.banks.spiderConfig.sendToServer + "/dataload/cheques/images", 'POST', data.formData, false, true, true)
@@ -2476,6 +2561,12 @@ all.banks.core.services = function () {
         });
     };
     services.removingCookie = function (param, cb) {
+        const CookiesDoc = document.cookie.split(';');
+        for (let i = 0; i < CookiesDoc.length; i++) {
+            if (!CookiesDoc[i].includes('lbleumi') && !CookiesDoc[i].includes('lbigudhb')) {
+                document.cookie = CookiesDoc[i] + "=;expires=" + new Date(0).toUTCString();
+            }
+        }
         var win = nw.Window.get();
         win.cookies.getAll({},
             function (cookies) {
@@ -2490,7 +2581,19 @@ all.banks.core.services = function () {
                                     clearProxy().then(() => {
                                         document.cookie = '';
                                         nw.App.clearCache();
-                                        win.reload();
+                                        if (/^linux/.test(process.platform)) {
+                                            exec("find ~/.cache/ -type f -delete", (err, stdout, stderr) => {
+                                                exec('sudo sh -c "sync; echo 1 > /proc/sys/vm/drop_caches"', (err, stdout, stderr) => {
+                                                    exec('sudo sh -c "sync; echo 2 > /proc/sys/vm/drop_caches"', (err, stdout, stderr) => {
+                                                        exec('sudo sh -c "sync; echo 3 > /proc/sys/vm/drop_caches"', (err, stdout, stderr) => {
+                                                            win.reload();
+                                                        });
+                                                    });
+                                                });
+                                            });
+                                        } else {
+                                            win.reload();
+                                        }
                                     })
                                 }, 1500);
                             }
@@ -2504,7 +2607,19 @@ all.banks.core.services = function () {
                         clearProxy().then(() => {
                             document.cookie = '';
                             nw.App.clearCache();
-                            win.reload();
+                            if (/^linux/.test(process.platform)) {
+                                exec("find ~/.cache/ -type f -delete", (err, stdout, stderr) => {
+                                    exec('sudo sh -c "sync; echo 1 > /proc/sys/vm/drop_caches"', (err, stdout, stderr) => {
+                                        exec('sudo sh -c "sync; echo 2 > /proc/sys/vm/drop_caches"', (err, stdout, stderr) => {
+                                            exec('sudo sh -c "sync; echo 3 > /proc/sys/vm/drop_caches"', (err, stdout, stderr) => {
+                                                win.reload();
+                                            });
+                                        });
+                                    });
+                                });
+                            } else {
+                                win.reload();
+                            }
                         })
                     }
                     if (cb) {
@@ -3096,6 +3211,8 @@ all.banks.core.services = function () {
             var IND_NILVIM = $("#IND_NILVIM").prop('checked');
             var isPoalimAsakim = $("#isPoalimAsakim").prop('checked');
             var isOtp = $("#isOtp").prop('checked');
+            var isGetAccFromServer = $("#isGetAccFromServer").prop('checked');
+
             all.banks.generalVariables.isOtp = isOtp;
             all.banks.generalVariables.otpChannel = $("input:radio[name ='otpChannel']:checked").val();
             all.banks.openBankPage = $("#openBankPage").prop('checked');
@@ -3193,7 +3310,7 @@ all.banks.core.services = function () {
                                         all.banks.accountDetails.ccardMonth = 3;
                                     }
                                     if (isPoalimAsakim && isOtp) {
-                                        all.banks.bankPoalimAsakimManual = true;
+                                        all.banks.bankPoalimAsakimManual = isGetAccFromServer ? false : true;
                                         if (account !== "" && branch !== "" && !all.banks.openBankPage) {
                                             all.banks.accountDetails.bank.arrDDAll = [{
                                                 "BANK_SNIF_ACCOUNT_KEY": account + "-" + branch,
@@ -3512,6 +3629,8 @@ all.banks.core.services = function () {
                 $("#account").prop("disabled", false);
                 $("#isOtp").prop("disabled", false);
                 $(".isOtp").addClass("enabled");
+                $("#isGetAccFromServer").prop("disabled", false);
+                $(".isGetAccFromServer").addClass("enabled");
 
                 if ($("#openBankPage").prop("checked")) {
                     $("#branch").prop("disabled", true);
@@ -3522,7 +3641,8 @@ all.banks.core.services = function () {
                 $("#account").prop("disabled", true);
                 $("#isOtp").prop("disabled", true);
                 $(".isOtp").removeClass("enabled");
-
+                $("#isGetAccFromServer").prop("disabled", true);
+                $(".isGetAccFromServer").removeClass("enabled");
                 $("#token").prop("disabled", false);
 //				$("#isAsakim").prop("disabled", false);
             }
@@ -4050,6 +4170,15 @@ all.banks.core.services = function () {
             type = 68;
             return type;
         } else if (
+            (text.indexOf("פיבי") !== -1)
+            ||
+            (text.indexOf("בינלאומי") !== -1)
+            ||
+            (text.indexOf("הבינלאומי") !== -1)
+        ) {
+            type = 31;
+            return type;
+        } else if (
             (text.indexOf("לאומי") !== -1)
         ) {
             type = 10;
@@ -4078,13 +4207,6 @@ all.banks.core.services = function () {
             (text.indexOf("טפחות") !== -1)
         ) {
             type = 20;
-            return type;
-        } else if (
-            (text.indexOf("פיבי") !== -1)
-            ||
-            (text.indexOf("בינלאומי") !== -1)
-        ) {
-            type = 31;
             return type;
         } else if (
             (text.indexOf("מרכנתיל עסקים") !== -1)

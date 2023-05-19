@@ -1,4 +1,29 @@
-//test
+function dateAsDDMMYYYYArray(dt) {
+    return [
+        ("0" + (dt.getDate())).slice(-2),
+        ("0" + (dt.getMonth() + 1)).slice(-2),
+        dt.getFullYear().toString()
+    ];
+}
+
+function strYYYYMMDDAsDDMMYYYYArray(str) {
+    const matchExact = /^(\d{4})(\d{2})(\d{2})$/g.exec(str);
+    if (matchExact !== null) {
+        return [matchExact[3], matchExact[2], matchExact[1]];
+    }
+
+    return [];
+}
+
+function strDDMMYYYYAsDDMMYYYYArray(str) {
+    const matchExact = /^(\d{2})(\d{2})(\d{4})$/g.exec(str);
+    if (matchExact !== null) {
+        return [matchExact[1], matchExact[2], matchExact[3]];
+    }
+
+    return [];
+}
+
 all.banks.accounts.discuont = function () {
     var discuont = {};
     discuont.login = async function () {
@@ -22,7 +47,7 @@ all.banks.accounts.discuont = function () {
         }
         // await all.banks.core.services.httpReq('https://start.telebank.co.il/LoginPages/Logon?multilang=he&t=P&pagekey=home&bank=' + all.banks.accounts.discuont.typeBank, 'GET', null, false, false);
         // let response = await all.banks.core.services.httpReq('https://start.telebank.co.il/LoginPages/Logon?multilang=he&t=P&pagekey=home&bank=' + all.banks.accounts.discuont.typeBank, 'GET', null, false, false);
-        let response = await all.banks.core.services.httpReq('https://start.telebank.co.il/login/', 'GET', null, false, false);
+        let response = await all.banks.core.services.httpReq('https://start.telebank.co.il/login/?multilang=he&bank=' + all.banks.accounts.discuont.typeBank + '&t=p', 'GET', null, false, false);
         var dataRes = all.banks.core.services.parseHtml(response);
         win.cookies.getAll({}, function (cool) {
             cool.forEach(function (v) {
@@ -477,7 +502,7 @@ all.banks.accounts.discuont = function () {
             });
     }
     discuont.login2 = async function () {
-        await all.banks.core.services.httpReq("https://start.telebank.co.il/apollo/core/templates/default/masterPage.html", 'GET', null, false, false);
+        await all.banks.core.services.httpReq("https://start.telebank.co.il/apollo/retail/#/MY_ACCOUNT_HOMEPAGE", 'GET', null, false, false);
         if (!all.banks.openBankPage) {
             all.banks.generalVariables.allDataArr = {
                 "ExporterId": all.banks.spiderConfig.spiderId,
@@ -514,7 +539,7 @@ all.banks.accounts.discuont = function () {
             all.banks.accounts.discuontAsakimPlus.datebacksleshToMatah = (all.banks.accountDetails.dateToMatah.getFullYear()) + ("0" + (all.banks.accountDetails.dateToMatah.getMonth() + 1)).slice(-2) + ("0" + (all.banks.accountDetails.dateToMatah.getDate())).slice(-2);
             discuont.login6();
         } else {
-            all.banks.core.services.openBankPage("https://start.telebank.co.il/apollo/core/templates/RETAIL/masterPage.html#/MY_ACCOUNT_HOMEPAGE");
+            all.banks.core.services.openBankPage("https://start.telebank.co.il/apollo/retail/#/MY_ACCOUNT_HOMEPAGE");
         }
     }
     discuont.login6 = async function (accid, discount_token, sn) {
@@ -885,33 +910,6 @@ all.banks.accounts.discuont = function () {
                 all.banks.core.services.errorLog(logErr)
             });
     }
-
-    function dateAsDDMMYYYYArray(dt) {
-        return [
-            ("0" + (dt.getDate())).slice(-2),
-            ("0" + (dt.getMonth() + 1)).slice(-2),
-            dt.getFullYear().toString()
-        ];
-    }
-
-    function strYYYYMMDDAsDDMMYYYYArray(str) {
-        const matchExact = /^(\d{4})(\d{2})(\d{2})$/g.exec(str);
-        if (matchExact !== null) {
-            return [matchExact[3], matchExact[2], matchExact[1]];
-        }
-
-        return [];
-    }
-
-    function strDDMMYYYYAsDDMMYYYYArray(str) {
-        const matchExact = /^(\d{2})(\d{2})(\d{4})$/g.exec(str);
-        if (matchExact !== null) {
-            return [matchExact[1], matchExact[2], matchExact[3]];
-        }
-
-        return [];
-    }
-
     discuont.loadStandingOrders = async function () {
         try {
             const data = await all.banks.core.services.httpReq("https://start.telebank.co.il/Titan/gatewayAPI/debitAuthorizations/standingOrdersList/" + all.banks.accounts.discuont.accArr[discuont.accountNow].numberAcc, 'GET', null, false, false);
@@ -1939,7 +1937,6 @@ all.banks.accounts.discuont = function () {
 
         doLoad();
     };
-
     discuont.loadMatah = function (data, acc) {
         var countMatahAcc = 0;
         changeSubMatahAcc(acc);
@@ -2552,7 +2549,5 @@ all.banks.accounts.discuont = function () {
         }
         return null;
     };
-
     return discuont;
-
 }();
