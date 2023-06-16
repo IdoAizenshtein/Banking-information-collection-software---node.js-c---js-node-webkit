@@ -109,7 +109,7 @@ function setProxy() {
                     writeLog('--- Real IP: ' + ipAddrress + '----');
 
                     require('request')({
-                        uri: 'https://brightdata.com/api/zone/whitelist',
+                        uri: 'https://api.brightdata.com/zone/whitelist',
                         method: "POST",
                         body: {'zone': 'residential', 'ip': ipAddrress.replace(/\s/g, "")},
                         json: true,

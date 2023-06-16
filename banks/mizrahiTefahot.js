@@ -337,25 +337,28 @@ all.banks.accounts.mizrahiTefahot = function () {
                                 all.banks.accounts.mizrahiTefahot.datebackslesh = ("0" + (all.banks.accountDetails.dateFrom.getDate())).slice(-2) + '/' + ("0" + (all.banks.accountDetails.dateFrom.getMonth() + 1)).slice(-2) + '/' + all.banks.accountDetails.dateFrom.getFullYear();
                                 all.banks.accounts.mizrahiTefahot.datemakafWithMin = all.banks.accountDetails.dateFrom.getFullYear() + '-' + ("0" + (all.banks.accountDetails.dateFrom.getMonth() + 1)).slice(-2) + '-' + ("0" + (all.banks.accountDetails.dateFrom.getDate())).slice(-2) + '-00-00-00';
                                 all.banks.accounts.mizrahiTefahot.datePsik = all.banks.accountDetails.dateFrom.getFullYear() + ',' + ("0" + (all.banks.accountDetails.dateFrom.getMonth() + 1)).slice(-2) + ',' + ("0" + (all.banks.accountDetails.dateFrom.getDate())).slice(-2);
-
                                 all.banks.accounts.mizrahiTefahot.datemakafTo = all.banks.accountDetails.dateTo.getFullYear() + '-' + ("0" + (all.banks.accountDetails.dateTo.getMonth() + 1)).slice(-2) + '-' + ("0" + (all.banks.accountDetails.dateTo.getDate())).slice(-2);
                                 all.banks.accounts.mizrahiTefahot.datebacksleshTo = ("0" + (all.banks.accountDetails.dateTo.getDate())).slice(-2) + '/' + ("0" + (all.banks.accountDetails.dateTo.getMonth() + 1)).slice(-2) + '/' + all.banks.accountDetails.dateTo.getFullYear();
                                 all.banks.accounts.mizrahiTefahot.datemakafWithMinTo = all.banks.accountDetails.dateTo.getFullYear() + '-' + ("0" + (all.banks.accountDetails.dateTo.getMonth() + 1)).slice(-2) + '-' + ("0" + (all.banks.accountDetails.dateTo.getDate())).slice(-2) + '-00-00-00';
                                 all.banks.accounts.mizrahiTefahot.datePsikTo = all.banks.accountDetails.dateTo.getFullYear() + ',' + ("0" + (all.banks.accountDetails.dateTo.getMonth() + 1)).slice(-2) + ',' + ("0" + (all.banks.accountDetails.dateTo.getDate())).slice(-2);
+
+                                let setFullFromDate = new Date();
+                                const timeYearAgo = setFullFromDate.setFullYear(setFullFromDate.getFullYear() - 1);
+                                if (timeYearAgo > all.banks.accountDetails.dateFrom.getTime()) {
+                                    all.banks.accountDetails.dateFrom = setFullFromDate;
+                                }
                                 all.banks.accounts.mizrahiTefahot.dateFrom =
                                     ("0" + (all.banks.accountDetails.dateFrom.getDate())).slice(-2) +
                                     '/' +
                                     ("0" + (all.banks.accountDetails.dateFrom.getMonth() + 1)).slice(-2) +
                                     '/' +
                                     all.banks.accountDetails.dateFrom.getFullYear();
-
                                 all.banks.accounts.mizrahiTefahot.dateTill =
                                     ("0" + (all.banks.accountDetails.dateTo.getDate())).slice(-2) +
                                     '/' +
                                     ("0" + (all.banks.accountDetails.dateTo.getMonth() + 1)).slice(-2) +
                                     '/' +
                                     all.banks.accountDetails.dateTo.getFullYear();
-
 
                                 all.banks.accounts.mizrahiTefahot.dateFromSalary = all.banks.accountDetails.dateFrom.getFullYear() + ("0" + (all.banks.accountDetails.dateFrom.getMonth() + 1)).slice(-2) + ("0" + (all.banks.accountDetails.dateFrom.getDate())).slice(-2);
                                 all.banks.accounts.mizrahiTefahot.dateTillSalary = all.banks.accountDetails.dateTo.getFullYear() + ("0" + (all.banks.accountDetails.dateTo.getMonth() + 1)).slice(-2) + ("0" + (all.banks.accountDetails.dateTo.getDate())).slice(-2);
@@ -2107,7 +2110,6 @@ all.banks.accounts.mizrahiTefahot = function () {
                                 if (idxAllCCMonth === -1 && getAllCreditCardsMonths.body.myCCMonthsList.length) {
                                     idxAllCCMonth = getAllCreditCardsMonths.body.myCCMonthsList.length - 1;
                                 }
-
                                 if (idxAllCCMonth === -1 && !getAllCreditCardsMonths.body.myCCMonthsList.length) {
                                     const prevMonYearDt = new Date();
                                     prevMonYearDt.setMonth(prevMonYearDt.getMonth() + 1);
@@ -2814,6 +2816,191 @@ all.banks.accounts.mizrahiTefahot = function () {
                                                 }
                                             }
                                         }
+                                    } else {
+                                        if (bankCreditCardsList && bankCreditCardsList.length) {
+                                            let setFullFromDate = new Date();
+                                            setFullFromDate.setDate(1);
+                                            setFullFromDate.setMonth(setFullFromDate.getMonth() + 2);
+                                            for (let indexMonth = 0;
+                                                 indexMonth < (all.banks.accountDetails.ccardMonth + 1);
+                                                 indexMonth++) {
+                                                setFullFromDate.setMonth(setFullFromDate.getMonth() - 1);
+                                                // console.log(setFullFromDate)
+                                                const monthParam = ("0" + (setFullFromDate.getMonth() + 1)).slice(-2) + setFullFromDate.getFullYear().toString();
+                                                for (let idxCard = 0; idxCard < bankCreditCardsList.length; idxCard++) {
+                                                    myEmitterLogs(15, bankCreditCardsList[idxCard].cc4LastNumber
+                                                        + ' period ' + monthParam);
+                                                    const getAllCreditCardsMonthSummary = await mizrahiTefahot.sender("https://mto.mizrahi-tefahot.co.il/Online/api/CC/getCCMonthSummary", "POST",
+                                                        {"month": monthParam});
+                                                    let allCreditCardsMonthSummaryMap = {};
+                                                    if (getAllCreditCardsMonthSummary && getAllCreditCardsMonthSummary.body) {
+                                                        const {
+                                                            myCCMonthlyListFuture,
+                                                            myCCMonthlyListPrevious
+                                                        } = getAllCreditCardsMonthSummary.body;
+                                                        if (Array.isArray(myCCMonthlyListFuture)) {
+                                                            allCreditCardsMonthSummaryMap = myCCMonthlyListFuture.reduce((acmltr, ccMonthSummary) => {
+                                                                acmltr[String(ccMonthSummary.creditCardIndex)] = Object.assign({future: true}, ccMonthSummary);
+                                                                return acmltr;
+                                                            }, allCreditCardsMonthSummaryMap);
+                                                        }
+                                                        if (Array.isArray(myCCMonthlyListPrevious)) {
+                                                            allCreditCardsMonthSummaryMap = myCCMonthlyListPrevious.reduce((acmltr, ccMonthSummary) => {
+                                                                acmltr[String(ccMonthSummary.creditCardIndex)] = Object.assign({future: false}, ccMonthSummary);
+                                                                return acmltr;
+                                                            }, allCreditCardsMonthSummaryMap);
+                                                        }
+                                                    }
+// new Date()
+//
+                                                    // no matter which card index we use, transactions for all cards in month brought anyway
+                                                    const getBankCCMonthlyDetails = await mizrahiTefahot.sender("https://mto.mizrahi-tefahot.co.il/Online/api/CC/getBankCCMonthlyDetails", "POST", {
+                                                        "ccIndex": bankCreditCardsList[idxCard].index,
+                                                        "month": monthParam
+                                                    });
+                                                    if (getBankCCMonthlyDetails && getBankCCMonthlyDetails.body) {
+                                                        const commonPart = {
+                                                            "TargetId": all.banks.accountDetails.bank.targetId,
+                                                            "Token": all.banks.accountDetails.bank.token,
+                                                            "ExtractDate": new Date().getFullYear() + '' + ("0" + (new Date().getMonth() + 1)).slice(-2) + '' + ("0" + (new Date().getDate())).slice(-2) + '' + ("0" + (new Date().getHours())).slice(-2) + '' + ("0" + (new Date().getMinutes())).slice(-2),
+                                                            "ExporterId": all.banks.spiderConfig.spiderId,
+                                                            'BankNumber': parseInt(all.banks.accountDetails.bank.BankNumber),
+                                                            'AccountNumber': parseInt(mizrahiTefahot.AccountsAllJson[i].Number),
+                                                            'BranchNumber': parseInt(mizrahiTefahot.AccountsAllJson[i].BranchForDispaly),
+                                                        };
+                                                        const {
+                                                            bankCCMonthlyDetailsList,
+                                                            bankCCMonthlyTotalChargesList
+                                                        } = getBankCCMonthlyDetails.body;
+                                                        for (let indexRow = 0; indexRow < bankCCMonthlyDetailsList.length; indexRow++) {
+                                                            const row = bankCCMonthlyDetailsList[indexRow];
+
+                                                            if (row.transactionAmount === "0" && row.chargeAmount === "0") {
+                                                                continue;
+                                                            }
+
+                                                            const card = bankCreditCardsList.find(item => item.index === row.creditCardIndex);
+
+                                                            let totalPaymentsSum = null;
+                                                            let currentPaymentNumSum = null;
+                                                            let comment = null;
+                                                            if (row.bankCCMonthlyDetailsMoreDetails) {
+                                                                if (row.bankCCMonthlyDetailsMoreDetails.myContinuousChargeDetails) {
+                                                                    [currentPaymentNumSum, totalPaymentsSum] = tryParseCurrentAndTotalPayments([
+                                                                        row.bankCCMonthlyDetailsMoreDetails.myContinuousChargeDetails.continuousChargeDetails_currentPaymentNum,
+                                                                        row.bankCCMonthlyDetailsMoreDetails.myContinuousChargeDetails.continuousChargeDetails_totalPaymentNum,
+                                                                        [row.bankCCMonthlyDetailsMoreDetails.myContinuousChargeDetails.continuousChargeDetails_currentPaymentNum,
+                                                                            row.bankCCMonthlyDetailsMoreDetails.myContinuousChargeDetails.continuousChargeDetails_totalPaymentNum]
+                                                                            .join(' מ ')
+                                                                    ]);
+                                                                } else if (!!row.bankCCMonthlyDetailsMoreDetails.chargeDetails_hearot
+                                                                    && !!row.bankCCMonthlyDetailsMoreDetails.chargeDetails_type
+                                                                    && ['תשלום', 'קרדיט'].some(key => row.bankCCMonthlyDetailsMoreDetails.chargeDetails_type.includes(key))) {
+                                                                    [currentPaymentNumSum, totalPaymentsSum] = tryParseCurrentAndTotalPayments([row.bankCCMonthlyDetailsMoreDetails.chargeDetails_hearot]);
+                                                                }
+                                                                comment = (row.bankCCMonthlyDetailsMoreDetails.chargeDetails_type + ' ' + row.bankCCMonthlyDetailsMoreDetails.chargeDetails_hearot).trim();
+                                                            }
+                                                            if (row.transactionDate === "0001-01-01T00:00:00") {
+                                                                if (comment) {
+                                                                    comment += ' לידיעה בלבד';
+                                                                } else {
+                                                                    comment = 'לידיעה בלבד';
+                                                                }
+                                                            }
+
+                                                            let chargeCurrencyToTranslate = row.chargeCurrencType;
+                                                            if (!chargeCurrencyToTranslate && row.chargeCurrencCode) {
+                                                                switch (row.chargeCurrencCode) {
+                                                                    case 777:
+                                                                    case '777':
+                                                                        chargeCurrencyToTranslate = 'NIS'
+                                                                        break;
+                                                                    case '001':
+                                                                        chargeCurrencyToTranslate = 'USD'
+                                                                        break;
+                                                                    case '009':
+                                                                        chargeCurrencyToTranslate = 'EUR'
+                                                                        break;
+                                                                }
+                                                            }
+
+                                                            const cardMonthSummary = allCreditCardsMonthSummaryMap[String(row.creditCardIndex)];
+                                                            const monthTotalChargeForRow = cardMonthSummary
+                                                                ? (cardMonthSummary.myCurrencyChargesList.find(crncyChrg => crncyChrg.currency === row.chargeCurrencCode)
+                                                                        ? cardMonthSummary.myCurrencyChargesList.find(crncyChrg => crncyChrg.currency === row.chargeCurrencCode)
+                                                                        : {
+                                                                            totalCharge: "0",
+                                                                            chargingDate: (card.myCloseCharge.closeChargeDate !== "0001-01-01T00:00:00")
+                                                                                ? new Date(card.myCloseCharge.closeChargeDate)
+                                                                                : (card.myLastCharge.lastChargeDate !== "0001-01-01T00:00:00")
+                                                                                    ? new Date(card.myLastCharge.lastChargeDate)
+                                                                                    : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 15)
+                                                                        }
+                                                                ) : {
+                                                                    totalCharge: "0",
+                                                                    chargingDate: (card.myCloseCharge.closeChargeDate !== "0001-01-01T00:00:00")
+                                                                        ? new Date(card.myCloseCharge.closeChargeDate)
+                                                                        : (card.myLastCharge.lastChargeDate !== "0001-01-01T00:00:00")
+                                                                            ? new Date(card.myLastCharge.lastChargeDate)
+                                                                            : new Date(new Date().getFullYear(), new Date().getMonth() + 1, 15)
+                                                                };
+
+                                                            try {
+                                                                if (typeof monthTotalChargeForRow.chargingDate === 'string') {
+                                                                    const [match, day, month, year] = /(\d{2})(\d{2})(\d{4})/g.exec(monthTotalChargeForRow.chargingDate) || [];
+                                                                    if (match) {
+                                                                        monthTotalChargeForRow.chargingDate = new Date(year, month - 1, day);
+                                                                    } else {
+                                                                        const [match1, day1, month1, year1] = /(\d{2})\/(\d{2})\/(\d{4})/g.exec(monthTotalChargeForRow.chargingDate) || [];
+                                                                        if (match1) {
+                                                                            monthTotalChargeForRow.chargingDate = new Date(year1, month1 - 1, day1);
+                                                                        }
+                                                                    }
+                                                                }
+                                                            } catch (e) {
+                                                                console.log(monthTotalChargeForRow, e)
+                                                            }
+                                                            const businessName = all.banks.core.services.getStringJson(row.businessName) ? all.banks.core.services.getStringJson(row.businessName) : 'ללא מלל';
+                                                            // if (businessName.includes('העברות לקרדיט')
+                                                            //     && row.chargeAmount.replace(/,/g, '') === "1124.53"
+                                                            //     && commonPart.AccountNumber === 381144
+                                                            //     && card.cc4LastNumber === '5561'
+                                                            // ) {
+                                                            //     debugger
+                                                            // }
+                                                            all.banks.generalVariables.allDataArrAshrai.push(Object.assign({
+                                                                "CardNumber": card.cc4LastNumber,
+                                                                "NextBillingDate": row.chargeDate === "0001-01-01T00:00:00"
+                                                                    ? all.banks.core.services.convertDateAll(monthTotalChargeForRow.chargingDate) // all.banks.core.services.convertDateAll(closeChargeDate)
+                                                                    : all.banks.core.services.convertDateAll(row.chargeDate), //all.banks.core.services.convertDateAll(monthTotalChargeForRow.chargingDate) ? all.banks.core.services.convertDateAll(monthTotalChargeForRow.chargingDate) : all.banks.core.services.convertDateAll(row.chargeDate),
+                                                                "NextCycleTotal": monthTotalChargeForRow.totalCharge.replace(/,/g, ''),
+                                                                // bankCCMonthlyTotalChargesList.find((it) => it.creditCardIndex === card.index).totalChargesAmount.replace(/,/g, ''),
+                                                                "CardStatus": null,
+                                                                "TransDesc": businessName,
+                                                                "TransTotal": row.chargeAmount.replace(/,/g, ''),
+                                                                "ValueDate": row.transactionDate === "0001-01-01T00:00:00"
+                                                                    ? all.banks.core.services.convertDateAll(monthTotalChargeForRow.chargingDate) // all.banks.core.services.convertDateAll(closeChargeDate)
+                                                                    : all.banks.core.services.convertDateAll(row.transactionDate),
+                                                                "TransCategory": null,
+                                                                "TotalPayments": totalPaymentsSum !== null ? Number(totalPaymentsSum) : null,
+                                                                "CurrentPaymentNum": currentPaymentNumSum !== null ? Number(currentPaymentNumSum) : null,
+                                                                "CardType": all.banks.core.services.getTypeCard(card.ccName),
+                                                                "indFakeDate": row.chargeDate === "0001-01-01T00:00:00" ? 1 : 0,
+                                                                "currency_id": all.banks.core.services.getTypeCurrencyAll(row.MatbeaMakor),
+                                                                // all.banks.core.services.getTypeCurrencyAll(row.chargeCurrencType),
+                                                                "original_total": row.transactionAmount.replace(/,/g, ''),
+                                                                "ind_iskat_hul": all.banks.core.services.getTypeCurrencyAll(chargeCurrencyToTranslate),
+                                                                // all.banks.core.services.getTypeCurrencyAll(row.MatbeaMakor),
+                                                                "comment": comment
+                                                            }, commonPart));
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                        }
+
+
                                     }
                                 } catch (e) {
                                     console.log(e)

@@ -1,6 +1,6 @@
 {
 	"name": "nwBizibox",
-	"version": "0.6.13",
+	"version": "0.7.11",
 	"versionDownloadFull": false,
 	"versionTest": false,
 	"versionKind": "DEV",
@@ -18,10 +18,13 @@
 		"toolbar": true,
 		"position": "center",
 		"icon": "menuFrame/appBizibox.png",
-		"width": 990,
+		"width": 1150,
 		"height": 565,
 		"resizable": true,
-		"show_in_taskbar": true
+		"show_in_taskbar": true,
+		"as_desktop": true,
+		"always_on_top": false,
+		"visible_on_all_workspaces": true
 	},
 	"node-remote": "https://secure.bizibox.biz/",
 	"nodejs": true,
@@ -126,7 +129,6 @@
 		"gulp-sftp": "^0.1.5",
 		"gulp-tar": "^2.1.0",
 		"gulp-util": "^3.0.8",
-		"gulp-zip": "^4.0.0",
-		"nw-builder": "^3.5.7"
+		"gulp-zip": "^4.0.0"
 	}
 }

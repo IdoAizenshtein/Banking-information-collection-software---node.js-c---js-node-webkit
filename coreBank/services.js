@@ -4301,6 +4301,13 @@ all.banks.core.services = function () {
     services.parseSum = function (sum) {
         return Math.round(sum * 100) / 100;
     }
+    services.addZeroDecimal = function (sum) {
+        if (typeof sum !== "number") {
+            return sum;
+        }
+        const num = Number.isInteger(Number(sum)) ? (Number(sum) + '.00') : (Math.round(Number(sum) * 100) / 100);
+        return num.toString();
+    }
     services.getStringJson = function (str) {
         if (str == undefined || str == null) {
             return str;

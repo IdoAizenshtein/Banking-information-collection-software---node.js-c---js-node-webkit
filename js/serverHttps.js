@@ -1,8 +1,8 @@
-var request = require('request');
+var requestServer = require('request');
 require('events').EventEmitter.prototype._maxListeners = 10;
 require('events').EventEmitter.defaultMaxListeners = 10;
 process.setMaxListeners(10);
-var request = request.defaults({maxRedirects: 10});
+var request_server = requestServer.defaults({maxRedirects: 10, forever: true, timeout: 30000});
 // var j = request.jar();
 //var requestJar = request.defaults({maxRedirects: 10, jar: true});
 // const https = require('https');
@@ -44,7 +44,7 @@ serverHttps.prototype.senderRest = function (url, referer, cookie, data, cb) {
         options.headers.Referer = referer;
     }
 
-    request(options, function (error, response, body) {
+    request_server(options, function (error, response, body) {
         if (!error && response.statusCode == 200) {
             cb(null, body, response);
             error = null;
@@ -78,7 +78,7 @@ serverHttps.prototype.senderGetRest = function (url, cookie, cb) {
     if (cookie !== null) {
         options.Cookie = cookie;
     }
-    request({
+    request_server({
         uri: url,
         method: "GET",
         family: 4,
@@ -208,7 +208,7 @@ serverHttps.prototype.getCookAll = function (cookies, val) {
 
 serverHttps.prototype.senderRestAll = function (options, cb) {
     options.family = 4;
-    request(options, function (error, response, body) {
+    request_server(options, function (error, response, body) {
         if (!error && response.statusCode == 200) {
             // var cookie_string = j.getCookieString(options.uri);
             // var cookAll = response.request.headers.Cookie;
@@ -228,7 +228,7 @@ serverHttps.prototype.senderRestAll = function (options, cb) {
 };
 
 serverHttps.prototype.sendersServer = function (options, cb) {
-    request(options, (error, response, data) => {
+    request_server(options, (error, response, data) => {
         cb(error, response, data);
     });
 

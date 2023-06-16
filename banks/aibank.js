@@ -383,6 +383,11 @@ all.banks.accounts.aibank = function () {
                         }
                     ]
                 };
+                let setFullFromDate = new Date();
+                const timeYearAgo = setFullFromDate.setFullYear(setFullFromDate.getFullYear() - 3);
+                if (timeYearAgo > all.banks.accountDetails.dateFrom.getTime()) {
+                    all.banks.accountDetails.dateFrom = setFullFromDate;
+                }
                 all.banks.generalVariables.allDataArrAshrai = [];
                 all.banks.generalVariables.allDataArrLoan = [];
                 all.banks.generalVariables.allDataArrDeposit = [];
@@ -5538,7 +5543,6 @@ all.banks.accounts.aibank = function () {
                     version: "V4.0"
                 }, false, false);
                 const jsonAccountTransactions = JSON.parse(accountTransactionsResp.jsonResp);
-
                 account['Balance'] = jsonAccountTransactions.BalanceDisplay;
                 account['AccountCredit'] = jsonAccountTransactions.TotalCredit;
 

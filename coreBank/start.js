@@ -150,7 +150,7 @@ fs.stat(pathSoftware, function (err, stats) {
                                 ipAddrress = ipAddrress.replace(/\s/g, "");
                                 all.banks.spiderConfig.spiderId = ipAddrress;
                                 require('request')({
-                                    uri: 'https://brightdata.com/api/zone/whitelist',
+                                    uri: 'https://api.brightdata.com/zone/whitelist',
                                     method: "POST",
                                     body: {'zone': 'residential', 'ip': ipAddrress},
                                     json: true,
@@ -182,7 +182,7 @@ fs.stat(pathSoftware, function (err, stats) {
                             } else {
                                 fs.stat("imageSpider.json", function (error, exist) {
                                     // require('request')({
-                                    //     uri: 'https://brightdata.com/api/zone/domain_perm',
+                                    //     uri: 'https://api.brightdata.com/zone/domain_perm',
                                     //     method: "POST",
                                     //     body: {'zone': 'residential','type':'whitelist','domain':ipAddrress},
                                     //     json:true,
@@ -192,7 +192,7 @@ fs.stat(pathSoftware, function (err, stats) {
                                     // });
 
                                     require('request')({
-                                        uri: 'https://brightdata.com/api/zone/whitelist',
+                                        uri: 'https://api.brightdata.com/zone/whitelist',
                                         method: "POST",
                                         body: {'zone': 'residential', 'ip': ipAddrress},
                                         json: true,

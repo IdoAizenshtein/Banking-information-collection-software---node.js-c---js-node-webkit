@@ -280,6 +280,7 @@ all.banks.core.main = function () {
             $(".loader").show();
             win.setBadgeLabel(" progress ");
             win.setProgressBar(50);
+            // console.log(JSON.stringify(all.banks.accountDetails))
             // console.log(all.banks.accountDetails.bank);
             // debugger
             if (!all.banks.generalVariables.isPoalimAsakim && !all.banks.openBankPage) {
@@ -387,7 +388,7 @@ all.banks.core.main = function () {
                                 //     //         .done(function (ipAddrress) {
                                 //     //             ipAddrress = ipAddrress.replace(/\s/g, "");
                                 //     //             request({
-                                //     //                 uri: 'https://brightdata.com/api/zone/whitelist',
+                                //     //                 uri: 'https://api.brightdata.com/zone/whitelist',
                                 //     //                 method: "POST",
                                 //     //                 body: {'zone': 'residential', 'ip': ipAddrress},
                                 //     //                 json: true,
@@ -534,7 +535,7 @@ all.banks.core.main = function () {
                             //     //         .done(function (ipAddrress) {
                             //     //             ipAddrress = ipAddrress.replace(/\s/g, "");
                             //     //             request({
-                            //     //                 uri: 'https://brightdata.com/api/zone/whitelist',
+                            //     //                 uri: 'https://api.brightdata.com/zone/whitelist',
                             //     //                 method: "POST",
                             //     //                 body: {'zone': 'residential', 'ip': ipAddrress},
                             //     //                 json: true,
@@ -636,7 +637,7 @@ all.banks.core.main = function () {
                             //         .done(function (ipAddrress) {
                             //             ipAddrress = ipAddrress.replace(/\s/g, "");
                             //             require('request')({
-                            //                 uri: 'https://brightdata.com/api/zone/whitelist',
+                            //                 uri: 'https://api.brightdata.com/zone/whitelist',
                             //                 method: "POST",
                             //                 body: {'zone': 'residential', 'ip': ipAddrress},
                             //                 json: true,
