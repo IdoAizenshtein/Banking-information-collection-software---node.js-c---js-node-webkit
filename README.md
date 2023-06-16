@@ -10,7 +10,7 @@
   <img src="angular.svg" height="50" title="Angular">
   <img src="JavaScript-logo.png" height="50" alt="JavaScript">
   <img src="Gnu-bash-logo.svg.png" height="50" alt="ShellScript">
-  <img src="openvpn-2" height="50" alt="OpenVPN">
+  <img src="openvpn-2.svg" height="50" alt="OpenVPN">
   <img src="png-clipart-website-development-html5-logo-world-wide-web-consortium-world-wide-web-angle-web-design.png" height="50" alt="HTML5">
   <img src="CSS3_logo.svg.png" height="50" alt="CSS3">
   <img src="logo-jquery@2x.png" height="50" alt="jquery">
